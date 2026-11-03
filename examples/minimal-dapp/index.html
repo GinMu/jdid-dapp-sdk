@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JDID 最小示例 dApp</title>
+    <style>
+      body { font: 14px/1.6 -apple-system, "PingFang SC", sans-serif; margin: 24px; color: #1b1b1f; }
+      pre { background: #f4f4f6; padding: 12px; border-radius: 8px; overflow: auto; }
+      .hint { color: #666; }
+    </style>
+  </head>
+  <body>
+    <h1>JDID 最小示例 dApp</h1>
+    <p class="hint">
+      必须从 JDID App 的 Explore/DApp 页打开本页(依赖注入的 <code>window.ethereum</code>);
+      在普通浏览器里会得到明确的 <code>wallet_missing</code> 报错。
+    </p>
+    <pre id="out">运行中…</pre>
+    <script type="module">
+      import { run } from "./main.js";
+
+      const out = document.getElementById("out");
+      try {
+        const result = await run(window.ethereum);
+        out.textContent = JSON.stringify(result, null, 2);
+      } catch (error) {
+        out.textContent = `${error.code ?? "error"}: ${error.message}`;
+      }
+    </script>
+  </body>
+</html>

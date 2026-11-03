@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://jdid.local/schema/jdid-manifest.schema.json",
+  "title": "JDID dApp manifest",
+  "description": "dApp 向 JDID 钱包声明自己是谁、入口在哪、要用哪些方法。填错不会让 dApp 跑不起来,但 conformance 会拦;未来按 origin 的授权台账以本文件的 methods 为上限。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["name", "version", "entry", "methods"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,63}$",
+      "description": "稳定标识(kebab-case),用于 catalog/授权台账;不要随版本改。"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 80,
+      "description": "展示名,缺省用 name。"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+([-+].*)?$"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 280
+    },
+    "entry": {
+      "type": "string",
+      "description": "相对本 manifest 的入口页面(通常是 index.html)。"
+    },
+    "methods": {
+      "type": "array",
+      "minItems": 0,
+      "uniqueItems": true,
+      "description": "本 dApp 需要调用的 RPC 方法名,必须是 contract/methods.json 里声明过的名字。",
+      "items": {
+        "type": "string"
+      }
+    },
+    "origins": {
+      "type": "array",
+      "uniqueItems": true,
+      "description": "允许加载本 dApp 的源(https 或 http://localhost)。授权台账落地前,先由 catalog 做准入检查。",
+      "items": {
+        "type": "string",
+        "pattern": "^https://[^\\s]+$|^http://(localhost|127\\.0\\.0\\.1)(:\\d+)?$"
+      }
+    },
+    "icon": {
+      "type": "string",
+      "description": "相对本 manifest 的图标路径(png/svg)。"
+    },
+    "minWalletVersion": {
+      "type": "string",
+      "description": "最低 JDID 版本(语义化);目前仅记录,不参与加载决策。"
+    }
+  }
+}

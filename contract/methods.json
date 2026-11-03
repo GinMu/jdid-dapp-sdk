@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "contractVersion": "0.1.0",
+  "$comment": "JDID dApp RPC 契约 —— 单一来源。改本文件后执行 `npm run gen`;`npm run gen:check` 会守卫生成物漂移。方法名与宿主实现以 kotlin-toolkits/dapp-connect 的 DAppMethod.kt / WebAppInterface.kt 为准。",
+  "wallet": {
+    "name": "JDID",
+    "nativeBridge": "_tw_",
+    "providerGlobals": ["ethereum", "ccdao"],
+    "envelope": ["name", "network", "id", "params"],
+    "responseApi": "window.ccdao.sendResponse(id, result)",
+    "errorApi": "window.ccdao.sendError(id, error)",
+    "events": ["_updateSelectedAddress", "_updateSwtcSelectedAddress", "_updateChainId"],
+    "defaultChain": "swtc",
+    "injectedGlobals": {
+      "_tw_": "钱包/DID RPC 原生端点(dapp-connect 注入,<app> 专有补丁不得被第三方依赖)",
+      "_jdidPreview": "blob 预览/下载端点(JDID 专有;iOS 需各自重写)",
+      "_jdidClipboard": "已移除:见 jdid-multi-platform C130(不再允许 DApp 静默写剪贴板)"
+    }
+  },
+  "sources": {
+    "methodEnum": "kotlin-toolkits/dapp-connect/src/main/java/com/jccdex/toolkits/dappconnect/model/DAppMethod.kt",
+    "dispatch": "kotlin-toolkits/dapp-connect/src/main/java/com/jccdex/toolkits/dappconnect/WebAppInterface.kt",
+    "protocol": "jdid-multi-platform/docs/dapp-webview-bridge-audit.md §2.2",
+    "providers": "jdid-multi-platform/docs/dapp-webview-bridge-audit.md §2.3",
+    "hostCapabilities": "jdid-multi-platform/docs/dapp-webview-bridge-audit.md §2.4",
+    "securityDebt": "kotlin-toolkits/docs/SECURITY_AUDIT.md"
+  },
+  "needsCatalog": {
+    "account": "读取当前账户地址(仅注入当前地址;历史账户不可选)",
+    "secret": "需要解锁/签名材料(SecretProvider,可能弹密码或生物识别)",
+    "confirm": "需要用户在钱包里逐笔确认(未绑定确认回调 = 拒签,fail-closed)",
+    "chain": "影响链/网络或需要链上广播"
+  },
+  "statusCatalog": {
+    "verified": "有源码守卫/测试证据,可直接依赖",
+    "partial": "可用但有已知限制(见 note),生产 dApp 需容错",
+    "stub": "宿主返回桩值或恒空,不要在生产 dApp 依赖",
+    "unknown": "本仓 conformance 未覆盖,接入前先实测"
+  },
+  "methods": [
+    {
+      "name": "swtc_requestAccounts",
+      "family": "swtc",
+      "returns": "string[]",
+      "needs": ["account"],
+      "status": "partial",
+      "note": "仅注入当前地址;setCurrentAccount/currentAccount 为空实现",
+      "source": "providers"
+    },
+    {
+      "name": "swtc_sendTransaction",
+      "family": "swtc",
+      "returns": "object(txHash)",
+      "needs": ["account", "secret", "chain", "confirm"],
+      "status": "partial",
+      "note": "Android 确认路径已收敛(C183);iOS 未 fail-closed(C154,跨仓阻塞)",
+      "source": "dispatch"
+    },
+    {
+      "name": "swtc_multiSign",
+      "family": "swtc",
+      "returns": "object",
+      "needs": ["account", "secret", "confirm"],
+      "status": "partial",
+      "note": "同 swtc_sendTransaction 的 iOS 确认缺口",
+      "source": "dispatch"
+    },
+    {
+      "name": "swtc_signMessage",
+      "family": "swtc",
+      "returns": "string(signature)",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "origin 已透传给 SecretProvider,但不做授权决策",
+      "source": "providers"
+    },
+    {
+      "name": "swtc_getPublicKey",
+      "family": "swtc",
+      "returns": "string",
+      "needs": ["account"],
+      "status": "verified",
+      "source": "dispatch"
+    },
+    {
+      "name": "swtc_batchTransactions",
+      "family": "swtc",
+      "returns": "object",
+      "needs": ["account", "secret", "chain", "confirm"],
+      "status": "partial",
+      "note": "同 swtc_sendTransaction 的 iOS 确认缺口",
+      "source": "dispatch"
+    },
+    {
+      "name": "swtc_requestNfts",
+      "family": "swtc",
+      "returns": "array",
+      "needs": ["account"],
+      "status": "verified",
+      "note": "SWTC NFT 走平台库(IosNftMetaStore / Android NFT store)",
+      "source": "providers"
+    },
+    {
+      "name": "eth_accounts",
+      "family": "eth",
+      "returns": "string[]",
+      "needs": ["account"],
+      "status": "partial",
+      "note": "只回当前地址,不提供账户列表选择",
+      "source": "providers"
+    },
+    {
+      "name": "eth_requestAccounts",
+      "family": "eth",
+      "returns": "string[]",
+      "needs": ["account"],
+      "status": "partial",
+      "note": "同上;无按 origin 的账户授权台账",
+      "source": "providers"
+    },
+    {
+      "name": "eth_chainId",
+      "family": "eth",
+      "returns": "string(hex)",
+      "needs": [],
+      "status": "verified",
+      "note": "initialChain = SWTC;不注入 initJs 以免 DApp 误判 EVM 链",
+      "source": "protocol"
+    },
+    {
+      "name": "eth_blockNumber",
+      "family": "eth",
+      "returns": "string(hex)",
+      "needs": [],
+      "status": "stub",
+      "note": "NodeProvider 为 stub,多数方法返回 \"0x0\"",
+      "source": "providers"
+    },
+    {
+      "name": "personal_sign",
+      "family": "eth",
+      "returns": "string(signature)",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "无 origin 授权决策",
+      "source": "providers"
+    },
+    {
+      "name": "personal_ecRecover",
+      "family": "eth",
+      "returns": "string",
+      "needs": [],
+      "status": "verified",
+      "source": "dispatch"
+    },
+    {
+      "name": "eth_signTypedData",
+      "family": "eth",
+      "returns": "string(signature)",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "无 origin 授权决策",
+      "source": "providers"
+    },
+    {
+      "name": "eth_signTypedData_v3",
+      "family": "eth",
+      "returns": "string(signature)",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "同 eth_signTypedData(无 origin 授权决策)",
+      "source": "providers"
+    },
+    {
+      "name": "eth_signTypedData_v4",
+      "family": "eth",
+      "returns": "string(signature)",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "同 eth_signTypedData(无 origin 授权决策)",
+      "source": "providers"
+    },
+    {
+      "name": "eth_sendTransaction",
+      "family": "eth",
+      "returns": "string(txHash)",
+      "needs": ["account", "secret", "chain", "confirm"],
+      "status": "partial",
+      "note": "NodeProvider 广播未实现;iOS 无确认闸门(C154)",
+      "source": "providers"
+    },
+    {
+      "name": "eth_signTransaction",
+      "family": "eth",
+      "returns": "string",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "只签名不出网;但无 origin 授权决策",
+      "source": "dispatch"
+    },
+    {
+      "name": "eth_getEncryptionPublicKey",
+      "family": "eth",
+      "returns": "string",
+      "needs": ["account", "secret"],
+      "status": "unknown",
+      "note": "本仓 conformance 未覆盖",
+      "source": "dispatch"
+    },
+    {
+      "name": "eth_decrypt",
+      "family": "eth",
+      "returns": "string",
+      "needs": ["account", "secret"],
+      "status": "unknown",
+      "note": "本仓 conformance 未覆盖",
+      "source": "dispatch"
+    },
+    {
+      "name": "eth_requestNfts",
+      "family": "eth",
+      "returns": "array",
+      "needs": [],
+      "status": "stub",
+      "note": "getEvmNfts 恒返回空",
+      "source": "providers"
+    },
+    {
+      "name": "wallet_switchEthereumChain",
+      "family": "wallet",
+      "returns": "null",
+      "needs": ["chain"],
+      "status": "partial",
+      "note": "EVM 链切换 UX 与 initJs 均未落地(有意关闭)",
+      "source": "protocol"
+    },
+    {
+      "name": "did_requestAccountName",
+      "family": "did",
+      "returns": "object",
+      "needs": ["account"],
+      "status": "unknown",
+      "note": "本仓 conformance 未覆盖",
+      "source": "dispatch"
+    },
+    {
+      "name": "did_getBase58PublicKey",
+      "family": "did",
+      "returns": "string",
+      "needs": ["account"],
+      "status": "unknown",
+      "note": "本仓 conformance 未覆盖",
+      "source": "dispatch"
+    },
+    {
+      "name": "did_issueCredential",
+      "family": "did",
+      "returns": "object",
+      "needs": ["account", "secret", "confirm"],
+      "status": "partial",
+      "note": "H-DID1 宿主确认回调;未绑定即拒签的语义只在 Android 成立(C154)",
+      "source": "hostCapabilities"
+    },
+    {
+      "name": "ipfs_personalSign",
+      "family": "ipfs",
+      "returns": "string(signature)",
+      "needs": ["account", "secret"],
+      "status": "partial",
+      "note": "无载荷确认(审计「第五轮·有意未新开」);接入前请自行确认待签内容",
+      "source": "hostCapabilities"
+    },
+    {
+      "name": "ipfs_getPublicKey",
+      "family": "ipfs",
+      "returns": "string",
+      "needs": ["account"],
+      "status": "unknown",
+      "note": "本仓 conformance 未覆盖",
+      "source": "dispatch"
+    },
+    {
+      "name": "web3_clientVersion",
+      "family": "web3",
+      "returns": "string",
+      "needs": [],
+      "status": "verified",
+      "source": "dispatch"
+    }
+  ]
+}
