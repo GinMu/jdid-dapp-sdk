@@ -265,6 +265,8 @@ export function probeExpression() {
       return { ok: false, reason: "window.ethereum 不存在:页面不是从 JDID 打开的,或钱包未注入" };
     }
     const out = { ok: true, href: location.href, hasCcpp: typeof window.ccdao === "object" };
+    out.selectedAddress = provider.selectedAddress ?? null;
+    out.isConnected = typeof provider.isConnected === "boolean" ? provider.isConnected : null;
     out.accounts = await provider.request({ method: "eth_accounts" });
     out.chainId = await provider.request({ method: "eth_chainId" });
     out.clientVersion = await provider.request({ method: "web3_clientVersion" });

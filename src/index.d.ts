@@ -103,6 +103,7 @@ export interface JdidClient {
   readonly wallet: WalletLike;
   request<T = unknown>(name: MethodName, params?: unknown): Promise<T>;
   accounts(): Promise<string[]>;
+  connect(): Promise<string[]>;
   chainId(): Promise<string>;
   blockNumber(): Promise<string>;
   personalSign(args: { message: string; address?: string }): Promise<string>;

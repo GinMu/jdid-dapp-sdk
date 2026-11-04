@@ -18,6 +18,13 @@ test("typed helper 走 mock 并记录调用", async () => {
   assert.deepEqual(wallet.calls[2].params, ["hi"]);
 });
 
+test("connect() 走 eth_requestAccounts(未授权时 eth_accounts 恒空,得先授权)", async () => {
+  const wallet = createMockWallet();
+  const accounts = await createClient({ wallet }).connect();
+  assert.deepEqual(wallet.calls.map((c) => c.method), ["eth_requestAccounts"]);
+  assert.equal(accounts.length, 1);
+});
+
 test("personalSign 带地址时按 EIP-1193 顺序传 [message, address]", async () => {
   const wallet = createMockWallet();
   await createClient({ wallet }).personalSign({ message: "hi", address: "0xabc" });

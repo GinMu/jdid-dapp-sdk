@@ -231,6 +231,7 @@ function renderTypes(contract) {
   out.push("  readonly wallet: WalletLike;");
   out.push("  request<T = unknown>(name: MethodName, params?: unknown): Promise<T>;");
   out.push("  accounts(): Promise<string[]>;");
+  out.push("  connect(): Promise<string[]>;");
   out.push("  chainId(): Promise<string>;");
   out.push("  blockNumber(): Promise<string>;");
   out.push("  personalSign(args: { message: string; address?: string }): Promise<string>;");

@@ -9,7 +9,8 @@ import { createClient } from "../../src/index.js";
 export async function run(wallet) {
   const jdid = createClient({ wallet });
 
-  const accounts = await jdid.accounts();
+  // 走钱包授权拿地址(EIP-1193 connect):未授权 origin 时 eth_accounts 恒为空(M-R7)。
+  const accounts = await jdid.connect();
   const chainId = await jdid.chainId();
   // 只有确实需要签名时才调:它会触发钱包的解锁/确认(needs 含 account + secret)。
   const signature = await jdid.personalSign({ message: "hello from a JDID dApp" });

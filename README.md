@@ -86,9 +86,11 @@ node cli/conformance.mjs --cdp --wait 180
 `webview_devtools_remote_<pid>` → 在页面里 `Runtime.evaluate` 跑只读探针
 (`eth_accounts` / `eth_chainId` / `web3_clientVersion`),**不触碰** `secret` / `confirm`。
 
-- 默认只跑探针;要连 dApp 的 `run(wallet)` 一起跑就加 `--run-dapp`(示例 dApp 会调
-  `personal_sign`,需要已解锁,可能弹确认);
+- 默认只跑探针;要连 dApp 的 `run(wallet)` 一起跑就加 `--run-dapp`(示例 dApp 会先
+  `eth_requestAccounts` 授权、再 `personal_sign`,需要已解锁,会弹确认);
 - 没有设备 / App 没开:默认**降级为跳过**(报告里 `~ cdp`),加 `--require-cdp` 才判失败;
+- **`eth_accounts` 为空不算失败**(M-R7:未授权 origin 不注入地址),报告里是一条 `~` 警告;
+  想让它变失败加 `--require-accounts`(那就要先在钱包里授权);
 - 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`。
 
 > release / 上架包没有这个能力(WebView 调试只在 debuggable 构建里),这是刻意的。
@@ -105,9 +107,13 @@ node cli/conformance.mjs --cdp --wait 180
 - **`--cdp` 真机通道**:静态服务器 + `adb reverse`/`forward` + 页面内 `Runtime.evaluate`
   跑只读探针;缺设备时降级跳过,`--require-cdp` 才判失败。
 
+**首次真机实测(2026-11-04,emulator-5554)**:`web3_clientVersion` → `CCDAO/v1.0.0` ✓;
+`eth_accounts` → `[]`(未授权 origin,M-R7);`eth_chainId` → `0x1`(provider JS 默认,原生不推
+`_updateChainId`)。三条已写回契约 `note`,并据此把 `eth_accounts` / `eth_chainId` 标为 `partial`。
+
 还没做(下一步):
 
-- **用真机结果校准契约**:拿 `--cdp` 的实测输出把 `partial`/`unknown` 逐条变成证据
+- **用真机结果继续校准契约**(还有 14 条 `partial` / 5 条 `unknown` 待实测):拿 `--cdp` 的实测输出把 `partial`/`unknown` 逐条变成证据
   (需要解锁后跑一轮);
 - 按 origin 的授权台账与 dApp catalog(钱包侧要做运行时,本包只管声明与校验);
 - `create-jdid-dapp` 脚手架与 `@jdid/dapp-sdk` 的正式发版(现在 `private: true`)。

@@ -49,6 +49,7 @@ const cdpRunDapp = args.includes("--run-dapp");
 const cdpDevice = argValue("--device", undefined);
 const cdpPackage = argValue("--package", "com.android.jdid");
 const cdpWaitSeconds = Number(argValue("--wait", "120"));
+const cdpRequireAccounts = args.includes("--require-accounts");
 
 const TARGETS = {
   methods: join(ROOT, "src", "methods.js"),
@@ -184,6 +185,7 @@ const promptSurface = [...permissionNeeds].filter((n) => n === NEEDS.SECRET || n
 // ---------------------------------------------------------------- 6. cdp(真钱包)
 if (cdpEnabled) {
   const details = [];
+  const warnings = [];
   let info = null;
   let skipped = null;
   let unforward = null;
@@ -216,8 +218,12 @@ if (cdpEnabled) {
       const probe = await evaluate(target, probeExpression());
       info = { device, pageUrl, targetUrl: target.url, probe };
       if (!probe?.ok) details.push(`探针失败:${probe?.reason ?? "未知"}`);
-      if (!Array.isArray(probe?.accounts) || probe.accounts.length === 0) {
-        details.push("eth_accounts 返回空:钱包未注入账户,或当前未解锁");
+      const accountsEmpty = !Array.isArray(probe?.accounts) || probe.accounts.length === 0;
+      if (accountsEmpty) {
+        const reason =
+          "eth_accounts 返回空(M-R7:未授权 origin 不注入 selectedAddress;dApp 应先走 eth_requestAccounts 授权)";
+        if (cdpRequireAccounts) details.push(reason);
+        else warnings.push(`${reason} —— 按设计如此,未计入失败`);
       }
       if (typeof probe?.chainId !== "string" || !probe.chainId.startsWith("0x")) {
         details.push(`eth_chainId 异常:${JSON.stringify(probe?.chainId)}`);
@@ -252,7 +258,7 @@ if (cdpEnabled) {
     const summary = info?.probe?.ok
       ? `${info.device} · ${info.probe.accounts?.length ?? 0} 个账户 · ${info.probe.chainId} · ${info.probe.clientVersion}`
       : "真钱包 CDP 检查";
-    results.push({ id: "cdp", title: `真钱包 CDP:${summary}`, ok: details.length === 0, details });
+    results.push({ id: "cdp", title: `真钱包 CDP:${summary}`, ok: details.length === 0, details, warnings });
   }
 }
 
@@ -281,6 +287,7 @@ if (asJson) {
     const badge = r.skipped ? "~" : r.ok ? "✓" : "✗";
     console.log(`${badge} ${r.id.padEnd(12)} ${r.title}`);
     for (const detail of r.details) console.log(`    - ${detail}`);
+    for (const warning of r.warnings ?? []) console.log(`    ~ ${warning}`);
   }
   console.log("");
   console.log(`声明的方法(${declared.size}):${declared.size ? [...declared].join(", ") : "—"}`);

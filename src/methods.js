@@ -97,7 +97,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "只回当前地址,不提供账户列表选择",
+    note: "M-R7:未授权 origin 不注入 selectedAddress,provider JS 直接返回 state.accounts → 未授权时恒为 [](2026-11-04 真机实测 [])。要拿账户走 eth_requestAccounts(弹钱包授权)",
     source: "providers",
   }),
   Object.freeze({
@@ -106,7 +106,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "同上;无按 origin 的账户授权台账",
+    note: "触发钱包的 origin 授权(M-06/M-R7),授权后原生才推送地址;未授权前 eth_accounts 恒为空",
     source: "providers",
   }),
   Object.freeze({
@@ -114,8 +114,8 @@ export const METHODS = Object.freeze([
     family: "eth",
     returns: "string(hex)",
     needs: Object.freeze([]),
-    status: "verified",
-    note: "initialChain = SWTC;不注入 initJs 以免 DApp 误判 EVM 链",
+    status: "partial",
+    note: "provider JS 默认 chainId=0x1 且原生不推送 _updateChainId(2026-11-04 真机实测返回 0x1)→ **不能**用它判断真实链;SWTC 场景按地址/`swtc_*` 方法判断",
     source: "protocol",
   }),
   Object.freeze({
@@ -276,6 +276,7 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze([]),
     status: "verified",
+    note: "2026-11-04 真机实测返回 `CCDAO/v1.0.0`(provider JS 常量)",
     source: "dispatch",
   }),
 ]);

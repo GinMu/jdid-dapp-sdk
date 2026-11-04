@@ -36,6 +36,7 @@ test("probeExpression 只碰只读方法(不触发 secret/confirm)", () => {
     assert.ok(!expression.includes(forbidden), `探针不应触碰 ${forbidden}`);
   }
   assert.match(expression, /window\.ethereum/);
+  assert.match(expression, /selectedAddress/);
 });
 
 test("dappExpression 把入口 URL 安全地嵌进表达式", () => {

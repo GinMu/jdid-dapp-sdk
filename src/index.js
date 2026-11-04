@@ -118,6 +118,8 @@ export function createClient(options = {}) {
     wallet,
     request,
     accounts: () => request("eth_accounts"),
+    /** 走钱包授权拿账户(EIP-1193 connect);未授权 origin 时 `eth_accounts` 恒为空。 */
+    connect: () => request("eth_requestAccounts"),
     chainId: () => request("eth_chainId"),
     blockNumber: () => request("eth_blockNumber"),
     personalSign: ({ message, address } = {}) =>

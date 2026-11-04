@@ -3,7 +3,7 @@
 <!-- AUTO-GENERATED from contract/methods.json by scripts/gen.mjs — 不要手改。 -->
 
 契约版本 **0.1.0** · 方法 **28** 个:
-verified 5 · partial 16 · stub 2 · unknown 5
+verified 4 · partial 17 · stub 2 · unknown 5
 
 > `status` 含义见 `contract/methods.json` 的 `statusCatalog`;`needs` 里的 `confirm`/`secret`
 > 就是钱包会向用户弹出的授权/确认面,`jdid-manifest.json` 必须如实声明。
@@ -17,9 +17,9 @@ verified 5 · partial 16 · stub 2 · unknown 5
 | `swtc_getPublicKey` | swtc | `string` | account | **verified** | — |
 | `swtc_batchTransactions` | swtc | `object` | account, secret, chain, confirm | **partial** | 同 swtc_sendTransaction 的 iOS 确认缺口 |
 | `swtc_requestNfts` | swtc | `array` | account | **verified** | SWTC NFT 走平台库(IosNftMetaStore / Android NFT store) |
-| `eth_accounts` | eth | `string[]` | account | **partial** | 只回当前地址,不提供账户列表选择 |
-| `eth_requestAccounts` | eth | `string[]` | account | **partial** | 同上;无按 origin 的账户授权台账 |
-| `eth_chainId` | eth | `string(hex)` | — | **verified** | initialChain = SWTC;不注入 initJs 以免 DApp 误判 EVM 链 |
+| `eth_accounts` | eth | `string[]` | account | **partial** | M-R7:未授权 origin 不注入 selectedAddress,provider JS 直接返回 state.accounts → 未授权时恒为 [](2026-11-04 真机实测 [])。要拿账户走 eth_requestAccounts(弹钱包授权) |
+| `eth_requestAccounts` | eth | `string[]` | account | **partial** | 触发钱包的 origin 授权(M-06/M-R7),授权后原生才推送地址;未授权前 eth_accounts 恒为空 |
+| `eth_chainId` | eth | `string(hex)` | — | **partial** | provider JS 默认 chainId=0x1 且原生不推送 _updateChainId(2026-11-04 真机实测返回 0x1)→ **不能**用它判断真实链;SWTC 场景按地址/`swtc_*` 方法判断 |
 | `eth_blockNumber` | eth | `string(hex)` | — | **stub** | NodeProvider 为 stub,多数方法返回 "0x0" |
 | `personal_sign` | eth | `string(signature)` | account, secret | **partial** | 无 origin 授权决策 |
 | `personal_ecRecover` | eth | `string` | — | **verified** | — |
@@ -37,7 +37,7 @@ verified 5 · partial 16 · stub 2 · unknown 5
 | `did_issueCredential` | did | `object` | account, secret, confirm | **partial** | H-DID1 宿主确认回调;未绑定即拒签的语义只在 Android 成立(C154) |
 | `ipfs_personalSign` | ipfs | `string(signature)` | account, secret | **partial** | 无载荷确认(审计「第五轮·有意未新开」);接入前请自行确认待签内容 |
 | `ipfs_getPublicKey` | ipfs | `string` | account | **unknown** | 本仓 conformance 未覆盖 |
-| `web3_clientVersion` | web3 | `string` | — | **verified** | — |
+| `web3_clientVersion` | web3 | `string` | — | **verified** | 2026-11-04 真机实测返回 `CCDAO/v1.0.0`(provider JS 常量) |
 
 ## 数据来源
 

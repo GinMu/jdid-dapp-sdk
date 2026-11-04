@@ -11,7 +11,7 @@ test("示例 dApp 全过", () => {
   const result = runCli("examples/minimal-dapp");
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /全部通过/);
-  assert.match(result.stdout, /实际调用\(3\):eth_accounts, eth_chainId, personal_sign/);
+  assert.match(result.stdout, /实际调用\(3\):eth_requestAccounts, eth_chainId, personal_sign/);
   assert.match(result.stdout, /用户授权\/确认面:secret/);
 });
 
@@ -29,7 +29,7 @@ test("--json 输出可被机器消费", () => {
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
   assert.equal(report.contractVersion, "0.1.0");
-  assert.deepEqual(report.declaredMethods, ["eth_accounts", "eth_chainId", "personal_sign"]);
+  assert.deepEqual(report.declaredMethods, ["eth_requestAccounts", "eth_chainId", "personal_sign"]);
   assert.deepEqual(report.promptSurface, ["secret"]);
   assert.deepEqual(
     report.results.map((r) => r.id),
