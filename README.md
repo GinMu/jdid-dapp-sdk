@@ -107,9 +107,20 @@ node cli/conformance.mjs --cdp --wait 180
 - **`--cdp` 真机通道**:静态服务器 + `adb reverse`/`forward` + 页面内 `Runtime.evaluate`
   跑只读探针;缺设备时降级跳过,`--require-cdp` 才判失败。
 
-**首次真机实测(2026-11-04,emulator-5554)**:`web3_clientVersion` → `CCDAO/v1.0.0` ✓;
-`eth_accounts` → `[]`(未授权 origin,M-R7);`eth_chainId` → `0x1`(provider JS 默认,原生不推
-`_updateChainId`)。三条已写回契约 `note`,并据此把 `eth_accounts` / `eth_chainId` 标为 `partial`。
+**真机校准(2026-11-04,emulator-5554,SWTC 身份 `jwWmui…`)**:19 条方法逐条实测后写回契约——
+
+- **授权前** `eth_accounts` → `[]`、`swtc_requestAccounts` → `User rejected`(M-R7 设计);
+  设备上确认一次后 `eth_accounts` / `eth_requestAccounts` / `swtc_requestAccounts` 都返回地址。
+- **确认是桩的**:`eth_blockNumber` → `"0x0"`、`eth_requestNfts` → `{address:"",total:0,nfts:[]}`
+  (是**对象**不是数组,`returns` 已更正)。
+- **真能签的**:`swtc_signMessage`(23s,含确认,DER 签名)、`ipfs_personalSign`(13ms,DER 签名)。
+- **会弹确认的门**:`swtc_getPublicKey` / `did_getBase58PublicKey` / `ipfs_getPublicKey`(25s 未点 → 超时)。
+- **EVM 方法在 SWTC 地址上直接拒**:`personal_sign` / `eth_decrypt` / `eth_getEncryptionPublicKey`
+  都报 `Address is not an EVM address` → SWTC 场景请用 `swtc_*`。
+- `eth_chainId` → `0x1`(provider JS 默认,原生从不推 `_updateChainId`)——**不能**用来判断真实链;
+- `did_requestAccountName` → `"Base1"`;`web3_clientVersion` → `CCDAO/v1.0.0`。
+
+`node cli/calibrate.mjs --address <地址>` 可复跑这套逐条校准(默认只跑只读/无资金风险的方法)。
 
 还没做(下一步):
 

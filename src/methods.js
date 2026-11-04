@@ -35,7 +35,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "仅注入当前地址;setCurrentAccount/currentAccount 为空实现",
+    note: "未授权时直接 `User rejected the requestAccounts request`;授权后返回 SWTC 地址(实测 OK,2026-11-04)",
     source: "providers",
   }),
   Object.freeze({
@@ -62,7 +62,7 @@ export const METHODS = Object.freeze([
     returns: "string(signature)",
     needs: Object.freeze(["account","secret"]),
     status: "partial",
-    note: "origin 已透传给 SecretProvider,但不做授权决策",
+    note: "实测成功:约 23s(含用户确认),返回 DER 签名 3045022100…(2026-11-04 真机)",
     source: "providers",
   }),
   Object.freeze({
@@ -70,7 +70,8 @@ export const METHODS = Object.freeze([
     family: "swtc",
     returns: "string",
     needs: Object.freeze(["account"]),
-    status: "verified",
+    status: "partial",
+    note: "实测会触发用户确认(25s 超时未点),属需确认路径;未见失败语义(2026-11-04 真机)",
     source: "dispatch",
   }),
   Object.freeze({
@@ -85,10 +86,10 @@ export const METHODS = Object.freeze([
   Object.freeze({
     name: "swtc_requestNfts",
     family: "swtc",
-    returns: "array",
+    returns: "object{address,total,nfts}",
     needs: Object.freeze(["account"]),
-    status: "verified",
-    note: "SWTC NFT 走平台库(IosNftMetaStore / Android NFT store)",
+    status: "partial",
+    note: "实测返回 {\"address\":\"\",\"total\":0,\"nfts\":[]}(该身份无 NFT;2026-11-04 真机)",
     source: "providers",
   }),
   Object.freeze({
@@ -97,7 +98,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "M-R7:未授权 origin 不注入 selectedAddress,provider JS 直接返回 state.accounts → 未授权时恒为 [](2026-11-04 真机实测 [])。要拿账户走 eth_requestAccounts(弹钱包授权)",
+    note: "M-R7:未授权 origin 不注入 selectedAddress,未授权时恒为 [];授权后实测返回 [\"jwWmuiN6B1KjNJjH6f8cFxeY83UpjSMRWq\"](2026-11-04 真机)",
     source: "providers",
   }),
   Object.freeze({
@@ -106,7 +107,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "触发钱包的 origin 授权(M-06/M-R7),授权后原生才推送地址;未授权前 eth_accounts 恒为空",
+    note: "触发 origin 授权(M-06/M-R7);授权一次后静默,实测返回 [\"jwWmui…\"](2026-11-04 真机)",
     source: "providers",
   }),
   Object.freeze({
@@ -115,7 +116,7 @@ export const METHODS = Object.freeze([
     returns: "string(hex)",
     needs: Object.freeze([]),
     status: "partial",
-    note: "provider JS 默认 chainId=0x1 且原生不推送 _updateChainId(2026-11-04 真机实测返回 0x1)→ **不能**用它判断真实链;SWTC 场景按地址/`swtc_*` 方法判断",
+    note: "provider JS 默认 chainId=0x1 且原生不推送 _updateChainId(实测返回 0x1)→ **不能**用它判断真实链;SWTC 场景按地址/`swtc_*` 判断",
     source: "protocol",
   }),
   Object.freeze({
@@ -124,7 +125,7 @@ export const METHODS = Object.freeze([
     returns: "string(hex)",
     needs: Object.freeze([]),
     status: "stub",
-    note: "NodeProvider 为 stub,多数方法返回 \"0x0\"",
+    note: "NodeProvider 为 stub,实测返回 \"0x0\"(2026-11-04 真机)",
     source: "providers",
   }),
   Object.freeze({
@@ -133,7 +134,7 @@ export const METHODS = Object.freeze([
     returns: "string(signature)",
     needs: Object.freeze(["account","secret"]),
     status: "partial",
-    note: "无 origin 授权决策",
+    note: "SWTC 地址上报 `Address is not an EVM address: jwW…`(2026-11-04 真机)→ SWTC 场景请用 swtc_signMessage",
     source: "providers",
   }),
   Object.freeze({
@@ -142,6 +143,7 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze([]),
     status: "verified",
+    note: "实测:占位参数被拒(`Cannot convert string to buffer`),需真实签名+地址(2026-11-04 真机)",
     source: "dispatch",
   }),
   Object.freeze({
@@ -195,7 +197,7 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze(["account","secret"]),
     status: "unknown",
-    note: "本仓 conformance 未覆盖",
+    note: "SWTC 地址上报 `Address is not an EVM address`(2026-11-04 真机);需 EVM 地址",
     source: "dispatch",
   }),
   Object.freeze({
@@ -204,16 +206,16 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze(["account","secret"]),
     status: "unknown",
-    note: "本仓 conformance 未覆盖",
+    note: "SWTC 地址上报 `Address is not an EVM address`(2026-11-04 真机);需 EVM 地址",
     source: "dispatch",
   }),
   Object.freeze({
     name: "eth_requestNfts",
     family: "eth",
-    returns: "array",
+    returns: "object{address,total,nfts}",
     needs: Object.freeze([]),
     status: "stub",
-    note: "getEvmNfts 恒返回空",
+    note: "实测返回 {\"address\":\"\",\"total\":0,\"nfts\":[]}(**对象**不是数组;2026-11-04 真机)",
     source: "providers",
   }),
   Object.freeze({
@@ -230,8 +232,8 @@ export const METHODS = Object.freeze([
     family: "did",
     returns: "object",
     needs: Object.freeze(["account"]),
-    status: "unknown",
-    note: "本仓 conformance 未覆盖",
+    status: "verified",
+    note: "实测返回 \"Base1\"(2026-11-04 真机)",
     source: "dispatch",
   }),
   Object.freeze({
@@ -239,8 +241,8 @@ export const METHODS = Object.freeze([
     family: "did",
     returns: "string",
     needs: Object.freeze(["account"]),
-    status: "unknown",
-    note: "本仓 conformance 未覆盖",
+    status: "partial",
+    note: "实测会触发用户确认(25s 超时未点)(2026-11-04 真机)",
     source: "dispatch",
   }),
   Object.freeze({
@@ -249,7 +251,7 @@ export const METHODS = Object.freeze([
     returns: "object",
     needs: Object.freeze(["account","secret","confirm"]),
     status: "partial",
-    note: "H-DID1 宿主确认回调;未绑定即拒签的语义只在 Android 成立(C154)",
+    note: "实测 `Missing credential in payload`(需 {credential:…});成功路径未验证(2026-11-04 真机)",
     source: "hostCapabilities",
   }),
   Object.freeze({
@@ -258,7 +260,7 @@ export const METHODS = Object.freeze([
     returns: "string(signature)",
     needs: Object.freeze(["account","secret"]),
     status: "partial",
-    note: "无载荷确认(审计「第五轮·有意未新开」);接入前请自行确认待签内容",
+    note: "实测成功(13ms),返回 DER 签名 30440220…;审计仍记录无载荷确认,接入前自行确认待签内容(2026-11-04 真机)",
     source: "hostCapabilities",
   }),
   Object.freeze({
@@ -266,8 +268,8 @@ export const METHODS = Object.freeze([
     family: "ipfs",
     returns: "string",
     needs: Object.freeze(["account"]),
-    status: "unknown",
-    note: "本仓 conformance 未覆盖",
+    status: "partial",
+    note: "实测会触发用户确认(25s 超时未点)(2026-11-04 真机)",
     source: "dispatch",
   }),
   Object.freeze({
