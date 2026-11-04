@@ -4,6 +4,6 @@
   "version": "0.1.0",
   "description": "拿地址 + 读 chainId + 签一条消息,演示契约与 conformance 的最小闭环。",
   "entry": "index.html",
-  "methods": ["eth_requestAccounts", "eth_chainId", "personal_sign"],
+  "methods": ["eth_requestAccounts", "eth_chainId", "personal_sign", "swtc_requestAccounts", "swtc_signMessage"],
   "origins": ["https://example.com"]
 }

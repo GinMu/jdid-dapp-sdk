@@ -29,7 +29,7 @@ test("--json 输出可被机器消费", () => {
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
   assert.equal(report.contractVersion, "0.1.0");
-  assert.deepEqual(report.declaredMethods, ["eth_requestAccounts", "eth_chainId", "personal_sign"]);
+  assert.deepEqual(report.declaredMethods, ["eth_requestAccounts", "eth_chainId", "personal_sign", "swtc_requestAccounts", "swtc_signMessage"]);
   assert.deepEqual(report.promptSurface, ["secret"]);
   assert.deepEqual(
     report.results.map((r) => r.id),

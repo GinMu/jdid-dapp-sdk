@@ -120,6 +120,13 @@ export function createClient(options = {}) {
     accounts: () => request("eth_accounts"),
     /** 走钱包授权拿账户(EIP-1193 connect);未授权 origin 时 `eth_accounts` 恒为空。 */
     connect: () => request("eth_requestAccounts"),
+    /**
+     * SWTC 钱包的账户入口。`eth_accounts`/`eth_requestAccounts` 只报 EVM 账户(C185),
+     * SWTC 身份下返回空数组,必须改走 `swtc_requestAccounts`。
+     */
+    connectSwtc: () => request("swtc_requestAccounts"),
+    /** SWTC 消息签名(DER 签名,参数顺序 [from, data]);EVM 钱包请用 `personalSign`。 */
+    swtcSignMessage: ({ from, data }) => request("swtc_signMessage", [from, data]),
     chainId: () => request("eth_chainId"),
     blockNumber: () => request("eth_blockNumber"),
     personalSign: ({ message, address } = {}) =>

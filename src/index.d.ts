@@ -104,6 +104,8 @@ export interface JdidClient {
   request<T = unknown>(name: MethodName, params?: unknown): Promise<T>;
   accounts(): Promise<string[]>;
   connect(): Promise<string[]>;
+  connectSwtc(): Promise<string[]>;
+  swtcSignMessage(input: { from: string; data: string }): Promise<string>;
   chainId(): Promise<string>;
   blockNumber(): Promise<string>;
   personalSign(args: { message: string; address?: string }): Promise<string>;
