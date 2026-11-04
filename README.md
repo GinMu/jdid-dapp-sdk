@@ -69,6 +69,30 @@ npm run check        # 以上三件套
 
 `docs/capabilities.md` 是这张表的自动生成版,给 dApp 作者和 agent 读。
 
+## 真机跑法(`--cdp`)
+
+前面 5 项检查都在 Node 里跑;要打**真钱包**,加 `--cdp`:
+
+```sh
+# 1) 宿主机有 adb,设备已连上(debug 包:WebView 调试对 debuggable 应用默认开启)
+# 2) 在设备上解锁 JDID 并进入 Explore(先别输地址)
+node cli/conformance.mjs --cdp --wait 180
+
+# 3) 终端会打印形如 http://127.0.0.1:56803/ 的地址(已用 adb reverse 打通),
+#    粘到 Explore 输入框里打开;页面出现后工具自动 attach
+```
+
+它做的事:起静态服务器 → `adb reverse` → 等 App 进程 → `adb forward` 到
+`webview_devtools_remote_<pid>` → 在页面里 `Runtime.evaluate` 跑只读探针
+(`eth_accounts` / `eth_chainId` / `web3_clientVersion`),**不触碰** `secret` / `confirm`。
+
+- 默认只跑探针;要连 dApp 的 `run(wallet)` 一起跑就加 `--run-dapp`(示例 dApp 会调
+  `personal_sign`,需要已解锁,可能弹确认);
+- 没有设备 / App 没开:默认**降级为跳过**(报告里 `~ cdp`),加 `--require-cdp` 才判失败;
+- 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`。
+
+> release / 上架包没有这个能力(WebView 调试只在 debuggable 构建里),这是刻意的。
+
 ## 已经实现 vs 还没做
 
 已实现(本骨架):
@@ -77,11 +101,14 @@ npm run check        # 以上三件套
 - manifest 校验:`entry` 存在、`methods ⊆ 契约`;
 - **调用声明覆盖**:静态字面量 ∪ Mock 跑出来的真实调用,未声明即红(反向证明 fixture 已覆盖);
 - `_tw_` 线格式实现与断言:`{ name, network, id, params }`,响应按 id 只结算一次;
-- 超时/未知方法/钱包拒绝的错误归一化(`timeout` / `unknown_method` / `wallet_rejected`)。
+- 超时/未知方法/钱包拒绝的错误归一化(`timeout` / `unknown_method` / `wallet_rejected`);
+- **`--cdp` 真机通道**:静态服务器 + `adb reverse`/`forward` + 页面内 `Runtime.evaluate`
+  跑只读探针;缺设备时降级跳过,`--require-cdp` 才判失败。
 
 还没做(下一步):
 
-- `--cdp` 传输:把同一份用例打到 **debug** WebView 的 CDP 上(真钱包真签名);release 绝不能开调试;
+- **用真机结果校准契约**:拿 `--cdp` 的实测输出把 `partial`/`unknown` 逐条变成证据
+  (需要解锁后跑一轮);
 - 按 origin 的授权台账与 dApp catalog(钱包侧要做运行时,本包只管声明与校验);
 - `create-jdid-dapp` 脚手架与 `@jdid/dapp-sdk` 的正式发版(现在 `private: true`)。
 

@@ -21,12 +21,34 @@ import { pathToFileURL } from "node:url";
 import { loadContract, validateContract, generate } from "../scripts/gen.mjs";
 import { createMockWallet } from "../src/mock.js";
 import { isKnownMethod, METHOD_INDEX, NEEDS } from "../src/methods.js";
+import {
+  CdpError,
+  dappExpression,
+  evaluate,
+  forwardDevtools,
+  forwardPort,
+  hasAdb,
+  pickDevice,
+  probeExpression,
+  startStaticServer,
+  waitForPageTarget,
+  waitForPid,
+} from "./cdp.mjs";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const args = process.argv.slice(2);
 const asJson = args.includes("--json");
-const dappArgIndex = args.indexOf("--dapp");
-const dappDir = resolve(ROOT, dappArgIndex >= 0 ? args[dappArgIndex + 1] : "examples/minimal-dapp");
+const argValue = (flag, fallback) => {
+  const index = args.indexOf(flag);
+  return index >= 0 && args[index + 1] && !args[index + 1].startsWith("--") ? args[index + 1] : fallback;
+};
+const dappDir = resolve(ROOT, argValue("--dapp", "examples/minimal-dapp"));
+const cdpEnabled = args.includes("--cdp");
+const cdpRequire = args.includes("--require-cdp");
+const cdpRunDapp = args.includes("--run-dapp");
+const cdpDevice = argValue("--device", undefined);
+const cdpPackage = argValue("--package", "com.android.jdid");
+const cdpWaitSeconds = Number(argValue("--wait", "120"));
 
 const TARGETS = {
   methods: join(ROOT, "src", "methods.js"),
@@ -159,8 +181,83 @@ for (const name of declared) {
 }
 const promptSurface = [...permissionNeeds].filter((n) => n === NEEDS.SECRET || n === NEEDS.CONFIRM);
 
+// ---------------------------------------------------------------- 6. cdp(真钱包)
+if (cdpEnabled) {
+  const details = [];
+  let info = null;
+  let skipped = null;
+  let unforward = null;
+  let server = null;
+  try {
+    if (!hasAdb()) throw new CdpError("找不到 adb:请把 platform-tools 加入 PATH", { code: "no_adb" });
+    const device = pickDevice(cdpDevice);
+    server = await startStaticServer(dappDir);
+    unforward = forwardPort(device, server.port);
+    const pageUrl = new URL("index.html", server.url).href;
+    if (!asJson) {
+      console.log("");
+      console.log(`[cdp] 设备 ${device} · dApp 已就绪:${pageUrl}`);
+      console.log(`[cdp] 请在 JDID 里打开上面的地址(Explore 输入 URL),最多等 ${cdpWaitSeconds}s …`);
+    }
+    const pid = await waitForPid(device, cdpPackage, { timeoutMs: 60_000 });
+    const devtoolsPort = 9222;
+    const unforwardDevtools = forwardDevtools(device, pid, devtoolsPort);
+    try {
+      const { target, targets } = await waitForPageTarget(devtoolsPort, {
+        urlHint: `:${server.port}`,
+        timeoutMs: cdpWaitSeconds * 1000,
+      });
+      if (!target) {
+        throw new CdpError(
+          `等不到页面:没看到打开 ${pageUrl} 的 WebView(target 数 ${targets.length})`,
+          { code: "no_page" },
+        );
+      }
+      const probe = await evaluate(target, probeExpression());
+      info = { device, pageUrl, targetUrl: target.url, probe };
+      if (!probe?.ok) details.push(`探针失败:${probe?.reason ?? "未知"}`);
+      if (!Array.isArray(probe?.accounts) || probe.accounts.length === 0) {
+        details.push("eth_accounts 返回空:钱包未注入账户,或当前未解锁");
+      }
+      if (typeof probe?.chainId !== "string" || !probe.chainId.startsWith("0x")) {
+        details.push(`eth_chainId 异常:${JSON.stringify(probe?.chainId)}`);
+      }
+      if (typeof probe?.clientVersion !== "string") details.push("web3_clientVersion 不是字符串");
+
+      if (details.length === 0 && cdpRunDapp) {
+        const moduleUrl = new URL("main.js", server.url).href;
+        const run = await evaluate(target, dappExpression(moduleUrl), { timeoutMs: 120_000 });
+        info.dapp = run;
+        if (!run?.ok) details.push(`dApp run() 失败:${run?.reason ?? "未知"}`);
+        else if (!run.result?.signature) details.push("dApp 没拿到签名(可能未解锁,或 personal_sign 被拒)");
+      }
+    } finally {
+      unforwardDevtools();
+    }
+  } catch (error) {
+    const code = error?.code ?? "cdp_error";
+    if (["no_adb", "no_device", "multiple_devices", "no_package"].includes(code) && !cdpRequire) {
+      skipped = error.message;
+    } else {
+      details.push(`${code}: ${error.message}`);
+    }
+  } finally {
+    unforward?.();
+    await server?.close();
+  }
+
+  if (skipped) {
+    results.push({ id: "cdp", title: `真钱包 CDP(跳过:${skipped})`, ok: true, skipped: true, details: [] });
+  } else {
+    const summary = info?.probe?.ok
+      ? `${info.device} · ${info.probe.accounts?.length ?? 0} 个账户 · ${info.probe.chainId} · ${info.probe.clientVersion}`
+      : "真钱包 CDP 检查";
+    results.push({ id: "cdp", title: `真钱包 CDP:${summary}`, ok: details.length === 0, details });
+  }
+}
+
 // ---------------------------------------------------------------- 报告
-const ok = results.every((r) => r.ok);
+const ok = results.every((r) => r.ok || r.skipped);
 if (asJson) {
   console.log(
     JSON.stringify(
@@ -181,7 +278,8 @@ if (asJson) {
   console.log(`JDID dApp conformance —— ${relative(ROOT, dappDir)}  (contract ${contract.contractVersion})`);
   console.log("");
   for (const r of results) {
-    console.log(`${r.ok ? "✓" : "✗"} ${r.id.padEnd(12)} ${r.title}`);
+    const badge = r.skipped ? "~" : r.ok ? "✓" : "✗";
+    console.log(`${badge} ${r.id.padEnd(12)} ${r.title}`);
     for (const detail of r.details) console.log(`    - ${detail}`);
   }
   console.log("");
@@ -191,7 +289,7 @@ if (asJson) {
     `用户授权/确认面:${promptSurface.length ? promptSurface.join(" + ") : "无(不碰签名与确认)"}` +
       (smokeResult && typeof smokeResult === "object" ? `   smoke 返回键:${Object.keys(smokeResult).join(", ")}` : ""),
   );
-  const failed = results.filter((r) => !r.ok);
+  const failed = results.filter((r) => !r.ok && !r.skipped);
   console.log("");
   console.log(failed.length === 0 ? "结果:全部通过" : `结果:${failed.length} 项失败`);
 }
