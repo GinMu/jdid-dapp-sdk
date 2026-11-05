@@ -17,8 +17,8 @@ verified 3 · partial 21 · stub 2 · unknown 2
 | `swtc_getPublicKey` | swtc | `string` | account | **partial** | 实测会触发用户确认(25s 超时未点),属需确认路径;未见失败语义(2026-11-04 真机) |
 | `swtc_batchTransactions` | swtc | `object` | account, secret, chain, confirm | **partial** | 同 swtc_sendTransaction 的 iOS 确认缺口 |
 | `swtc_requestNfts` | swtc | `object{address,total,nfts}` | account | **partial** | 实测返回 {"address":"","total":0,"nfts":[]}(该身份无 NFT;2026-11-04 真机) |
-| `eth_accounts` | eth | `string[]` | account | **partial** | M-R7:未授权 origin 不注入 selectedAddress,未授权时恒为 [];授权后实测返回 ["jwWmuiN6B1KjNJjH6f8cFxeY83UpjSMRWq"](2026-11-04 真机) |
-| `eth_requestAccounts` | eth | `string[]` | account | **partial** | 触发 origin 授权(M-06/M-R7);授权一次后静默,实测返回 ["jwWmui…"](2026-11-04 真机) |
+| `eth_accounts` | eth | `string[]` | account | **partial** | C185 起只报 EVM 账户(非 HD 根):SWTC 身份下恒为 [](2026-11-04 真机确认;修复前会返回 j… 地址)。未授权 origin 也是 [](M-R7,不注入 selectedAddress) |
+| `eth_requestAccounts` | eth | `string[]` | account | **partial** | C185 起只报 EVM 账户:SWTC 身份下返回 [](修复前返回 j… 地址)。它会触发钱包的 origin 授权(M-06/M-R7),授权后同一 origin 静默 |
 | `eth_chainId` | eth | `string(hex)` | — | **partial** | provider JS 默认 chainId=0x1 且原生不推送 _updateChainId(实测返回 0x1)→ **不能**用它判断真实链;SWTC 场景按地址/`swtc_*` 判断 |
 | `eth_blockNumber` | eth | `string(hex)` | — | **stub** | NodeProvider 为 stub,实测返回 "0x0"(2026-11-04 真机) |
 | `personal_sign` | eth | `string(signature)` | account, secret | **partial** | SWTC 地址上报 `Address is not an EVM address: jwW…`(2026-11-04 真机)→ SWTC 场景请用 swtc_signMessage |

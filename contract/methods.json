@@ -144,7 +144,7 @@
         "account"
       ],
       "status": "partial",
-      "note": "M-R7:未授权 origin 不注入 selectedAddress,未授权时恒为 [];授权后实测返回 [\"jwWmuiN6B1KjNJjH6f8cFxeY83UpjSMRWq\"](2026-11-04 真机)",
+      "note": "C185 起只报 EVM 账户(非 HD 根):SWTC 身份下恒为 [](2026-11-04 真机确认;修复前会返回 j… 地址)。未授权 origin 也是 [](M-R7,不注入 selectedAddress)",
       "source": "providers"
     },
     {
@@ -155,7 +155,7 @@
         "account"
       ],
       "status": "partial",
-      "note": "触发 origin 授权(M-06/M-R7);授权一次后静默,实测返回 [\"jwWmui…\"](2026-11-04 真机)",
+      "note": "C185 起只报 EVM 账户:SWTC 身份下返回 [](修复前返回 j… 地址)。它会触发钱包的 origin 授权(M-06/M-R7),授权后同一 origin 静默",
       "source": "providers"
     },
     {
