@@ -83,13 +83,21 @@ const pid = await waitForPid(device, packageName, { timeoutMs: 30_000 });
 const unforward = forwardDevtools(device, pid, devtoolsPort);
 try {
   const targets = await listTargets(devtoolsPort);
-  const page = pickPageTarget(targets);
+  // 优先真正的 dApp 页面:WebView 里还可能有一个内部桥页面
+  // (`file:///android_asset/unified-bridge.html`),它没有 window.ethereum。
+  const page =
+    (targets ?? []).find((t) => t.type === "page" && /^https?:/.test(t.url ?? "")) ?? pickPageTarget(targets);
   if (!page) {
     console.error(`没找到页面 target(共 ${targets.length} 个);先把 DApp 页打开`);
     process.exit(2);
   }
   if (!asJson) console.log(`attach: ${device} · ${page.url}`);
-  const methods = unsafe ? [...SAFE, ...DANGEROUS] : SAFE;
+  const only = argValue("--only", "");
+  const methods = only
+    ? only.split(",").map((m) => m.trim()).filter(Boolean)
+    : unsafe
+      ? [...SAFE, ...DANGEROUS]
+      : SAFE;
   const rows = [];
   for (const method of methods) {
     const started = Date.now();

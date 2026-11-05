@@ -116,11 +116,14 @@ node cli/conformance.mjs --cdp --wait 180
 **真机校准(2026-11-04,emulator-5554,SWTC 身份 `jwWmui…`)**:19 条方法逐条实测后写回契约——
 
 - **授权前** `eth_accounts` → `[]`、`swtc_requestAccounts` → `User rejected`(M-R7 设计);
-  设备上确认一次后 `eth_accounts` / `eth_requestAccounts` / `swtc_requestAccounts` 都返回地址。
+  设备上确认一次后 `swtc_requestAccounts` 返回地址;**C185 起 `eth_accounts` / `eth_requestAccounts`
+  在已授权状态下仍为 `[]`**(EVM-only,2026-11-05 复验),SWTC 账户只能走 `swtc_requestAccounts`。
 - **确认是桩的**:`eth_blockNumber` → `"0x0"`、`eth_requestNfts` → `{address:"",total:0,nfts:[]}`
   (是**对象**不是数组,`returns` 已更正)。
 - **真能签的**:`swtc_signMessage`(23s,含确认,DER 签名)、`ipfs_personalSign`(13ms,DER 签名)。
-- **会弹确认的门**:`swtc_getPublicKey` / `did_getBase58PublicKey` / `ipfs_getPublicKey`(25s 未点 → 超时)。
+- **会弹确认的门**(2026-11-05 补测,确认后均成功):`swtc_getPublicKey` → 压缩公钥 `03347aa7…`;
+  `did_getBase58PublicKey` → `{publicKeyBase58:"xDondUJ3…",type:"EcdsaSecp256k1…"}`;
+  `ipfs_getPublicKey` → 与 `swtc_getPublicKey` 相同;`swtc_signMessage` → DER 签名。**不点确认则超时**。
 - **EVM 方法在 SWTC 地址上直接拒**:`personal_sign` / `eth_decrypt` / `eth_getEncryptionPublicKey`
   都报 `Address is not an EVM address` → SWTC 场景请用 `swtc_*`。
 - `eth_chainId` → `0x1`(provider JS 默认,原生从不推 `_updateChainId`)——**不能**用来判断真实链;

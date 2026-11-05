@@ -62,7 +62,7 @@ export const METHODS = Object.freeze([
     returns: "string(signature)",
     needs: Object.freeze(["account","secret"]),
     status: "partial",
-    note: "实测成功:约 23s(含用户确认),返回 DER 签名 3045022100…(2026-11-04 真机)",
+    note: "需用户确认;实测(2026-11-05)确认后 ~2.9s 返回 DER 签名 3045022100ABA108…(SWTC 场景用它,不要用 personal_sign)",
     source: "providers",
   }),
   Object.freeze({
@@ -71,7 +71,7 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "实测会触发用户确认(25s 超时未点),属需确认路径;未见失败语义(2026-11-04 真机)",
+    note: "需用户在钱包确认弹窗点「确认」;实测(2026-11-05)确认后 ~8.9s 返回压缩公钥 03347aa70dafaddbd1a2b45c353cef4ee6084883eed9d25055875c7349cb6bfa0b",
     source: "dispatch",
   }),
   Object.freeze({
@@ -98,7 +98,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "C185 起只报 EVM 账户(非 HD 根):SWTC 身份下恒为 [](2026-11-04 真机确认;修复前会返回 j… 地址)。未授权 origin 也是 [](M-R7,不注入 selectedAddress)",
+    note: "C185 起只报 EVM 账户:SWTC 身份下恒为 [](2026-11-05 真机:授权前后都是 [])。未授权 origin 也是 [](M-R7)",
     source: "providers",
   }),
   Object.freeze({
@@ -107,7 +107,7 @@ export const METHODS = Object.freeze([
     returns: "string[]",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "C185 起只报 EVM 账户:SWTC 身份下返回 [](修复前返回 j… 地址)。它会触发钱包的 origin 授权(M-06/M-R7),授权后同一 origin 静默",
+    note: "触发 origin 授权(M-06/M-R7);**C185 起只报 EVM 账户** —— 实测(2026-11-05)在已授权状态下仍返回 [](SWTC 身份);SWTC 账户请用 swtc_requestAccounts",
     source: "providers",
   }),
   Object.freeze({
@@ -242,7 +242,7 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "实测会触发用户确认(25s 超时未点)(2026-11-04 真机)",
+    note: "需确认;实测(2026-11-05)返回 {\"publicKeyBase58\":\"xDondUJ3LYGUMnxRwLaTs5kh6tDT4XCenvzxrpwZtCxJ\",\"type\":\"EcdsaSecp256k1…\"}",
     source: "dispatch",
   }),
   Object.freeze({
@@ -269,7 +269,7 @@ export const METHODS = Object.freeze([
     returns: "string",
     needs: Object.freeze(["account"]),
     status: "partial",
-    note: "实测会触发用户确认(25s 超时未点)(2026-11-04 真机)",
+    note: "需确认;实测(2026-11-05)返回与 swtc_getPublicKey 相同的压缩公钥",
     source: "dispatch",
   }),
   Object.freeze({
