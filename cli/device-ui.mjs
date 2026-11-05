@@ -43,14 +43,25 @@ export function findByText(nodes, candidates) {
   return null;
 }
 
-/** 找输入框:优先 text 含候选词的 EditText,没有就退化到第一个可点击 EditText。 */
+/**
+ * 找输入框。
+ *
+ * ①有 `EditText` 就优先用它(按提示词命中 > 第一个);②Compose 的输入框常被渲染成
+ * `TextView`/`View`(实测 Explore 的搜索框就是 `android.widget.TextView` + 占位文本),
+ * 所以在没有 EditText 时退化为"提示词命中的节点",并优先可点击的那个。
+ */
 export function findInput(nodes, candidates = []) {
   const edits = nodes.filter((n) => /EditText/i.test(n.cls));
-  if (edits.length === 0) return null;
-  const hinted = edits.find(
-    (n) => candidates.some((c) => (n.text && n.text.includes(c)) || (n.desc && n.desc.includes(c))),
+  if (edits.length > 0) {
+    const hinted = edits.find(
+      (n) => candidates.some((c) => (n.text && n.text.includes(c)) || (n.desc && n.desc.includes(c))),
+    );
+    return hinted ?? edits[0];
+  }
+  const hinted = nodes.filter((n) =>
+    candidates.some((c) => (n.text && n.text.includes(c)) || (n.desc && n.desc.includes(c))),
   );
-  return hinted ?? edits[0];
+  return hinted.find((n) => n.clickable) ?? hinted[0] ?? null;
 }
 
 /** `[x1,y1][x2,y2]` → 中心点坐标。 */
@@ -62,6 +73,7 @@ export function boundsCenter(bounds) {
 }
 
 const run = (device, args) => spawnSync("adb", ["-s", device, ...args], { encoding: "utf8" });
+const adbShell = run;
 
 /** 抓一次 UI 层级并解析。 */
 export function dumpUi(device) {
@@ -85,4 +97,62 @@ export function typeText(device, text) {
 
 export function pressEnter(device) {
   run(device, ["shell", "input", "keyevent", "66"]);
+}
+
+
+/**
+ * `--auto-open`:拉起 App → 进 Explore → 用「最近访问」打开地址。
+ *
+ * **为什么优先点最近访问而不是打字**:实测中文输入法会把 `http://` 改写成全角
+ * `HTTP：／／`、吞掉点号(`127.0.0.1:59721` → `12700.：／159721`),地址必然打错。
+ * 因此只要 App 里已经有这个地址(用固定 `--port` 跑过一次就会有),就点它;
+ * 只有找不到时才退化为打字,并在日志里明确提示"地址可能被输入法改写"。
+ */
+export async function openDappInWallet(device, packageName, url, { log, attempts = 8, intervalMs = 500 } = {}) {
+  const say = (message) => log?.(message);
+  const port = (url.match(/:(\d+)\//) ?? [])[1] ?? null;
+
+  const tapRecent = () => {
+    const nodes = dumpUi(device);
+    const hit =
+      nodes.find((n) => n.text === url) ??
+      nodes.find((n) => port && n.text.includes(`:${port}`) && n.text.endsWith("/index.html"));
+    if (!hit) return false;
+    tapBounds(device, hit.bounds);
+    say(`已点击「最近访问」里的 ${hit.text}`);
+    return true;
+  };
+
+  adbShell(device, ["shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1"]);
+  say("已拉起 App,尝试进入 Explore …");
+  if (tapRecent()) return true;
+
+  const exploreEntry = findByText(dumpUi(device), ["探索", "浏览", "Explore"]);
+  if (!exploreEntry) {
+    say("没找到 Explore 入口(可能仍在解锁页):请手动解锁并在 Explore 里打开地址");
+    return false;
+  }
+  tapBounds(device, exploreEntry.bounds);
+  say("已点击 Explore,等待搜索页 …");
+
+  let input = null;
+  for (let i = 0; i < attempts && !input; i += 1) {
+    input = findInput(dumpUi(device), ["搜索", "网址", "输入", "URL", "DApp"]);
+    if (!input) await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  if (input) {
+    tapBounds(device, input.bounds);
+    if (tapRecent()) return true;
+  }
+
+  if (!input) {
+    say("没找到地址输入框:请手动输入地址");
+    return false;
+  }
+  say("最近访问里没有这个地址,尝试直接输入(输入法可能改写 URL,失败请用固定 --port 复跑)");
+  typeText(device, url);
+  const submit = dumpUi(device).find((n) => ["打开", "前往", "访问", "Go"].includes(n.text));
+  if (submit) tapBounds(device, submit.bounds);
+  else pressEnter(device);
+  return true;
 }

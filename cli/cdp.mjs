@@ -176,8 +176,13 @@ export async function listTargets(port, { timeoutMs = 2_000 } = {}) {
 /** 在 target 列表里挑页面:优先 URL 含 hint 的 page,否则第一个 page。 */
 export function pickPageTarget(targets, urlHint) {
   const pages = (targets ?? []).filter((target) => target.type === "page" && typeof target.webSocketDebuggerUrl === "string");
-  if (urlHint) return pages.find((target) => (target.url ?? "").includes(urlHint)) ?? null;
-  return pages[0] ?? null;
+  if (!urlHint) return pages[0] ?? null;
+  const matched = pages.find((target) => (target.url ?? "").includes(urlHint));
+  if (matched) return matched;
+  // 页面刚创建时 target 的 url 可能是空串 / about:blank(实测打开 DApp 后先是空 url),
+  // 这种"正在导航"的 page 也要接住,否则会一直等不到 —— 是否真的是我们要的页面,
+  // 由调用方用 location.href 再确认一次。
+  return pages.find((target) => (target.url ?? "") === "" || (target.url ?? "").startsWith("about:")) ?? null;
 }
 
 /** 轮询 target 列表直到出现页面(或超时),返回 { target, targets }。 */
@@ -266,7 +271,12 @@ export function probeExpression() {
     }
     const out = { ok: true, href: location.href, hasCcpp: typeof window.ccdao === "object" };
     out.selectedAddress = provider.selectedAddress ?? null;
-    out.isConnected = typeof provider.isConnected === "boolean" ? provider.isConnected : null;
+    out.isConnected =
+      typeof provider.isConnected === "function"
+        ? Boolean(provider.isConnected())
+        : typeof provider.isConnected === "boolean"
+          ? provider.isConnected
+          : null;
     out.accounts = await provider.request({ method: "eth_accounts" });
     out.chainId = await provider.request({ method: "eth_chainId" });
     out.clientVersion = await provider.request({ method: "web3_clientVersion" });

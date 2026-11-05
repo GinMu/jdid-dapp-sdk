@@ -94,8 +94,10 @@ node cli/conformance.mjs --cdp --wait 180
 - 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`、`--port <端口>`、`--auto-open`。
 - **`--port` 固定端口有实际意义**:origin(`http://127.0.0.1:<port>`)是授权台账的键,端口随机就意味着
   **每次都要重新授权**;固定成比如 `--port 5173` 后,一次授权后续几次都静默。
-- **`--auto-open`** 会 `monkey` 拉起 App、点 Explore、把地址打进输入框(用 `uiautomator dump` 找控件);
-  解锁页/改版后找不到控件时只打印提示并退回手动打开,不会瞎点。
+- **`--auto-open`** 会 `monkey` 拉起 App、点 Explore,并**优先点 App 的「最近访问」**里的同一个地址;
+  找不到时才退化为 `input text` 打字。⚠️ 实测中文输入法会把 `http://` 改写成全角 `HTTP：／／`、
+  吞掉点号(`127.0.0.1:59721` → `12700.：／159721`),所以**第一次请用固定 `--port` 手动打开一次**,
+  之后 `--auto-open` 就能靠最近访问稳定复跑。解锁页/改版后找不到控件时只打印提示,不会瞎点。
 
 > release / 上架包没有这个能力(WebView 调试只在 debuggable 构建里),这是刻意的。
 
