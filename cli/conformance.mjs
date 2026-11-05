@@ -21,6 +21,7 @@ import { pathToFileURL } from "node:url";
 import { loadContract, validateContract, generate } from "../scripts/gen.mjs";
 import { createMockWallet } from "../src/mock.js";
 import { isKnownMethod, METHOD_INDEX, NEEDS } from "../src/methods.js";
+import { dumpUi, findByText, findInput, pressEnter, tapBounds, typeText } from "./device-ui.mjs";
 import {
   CdpError,
   dappExpression,
@@ -50,6 +51,8 @@ const cdpDevice = argValue("--device", undefined);
 const cdpPackage = argValue("--package", "com.android.jdid");
 const cdpWaitSeconds = Number(argValue("--wait", "120"));
 const cdpRequireAccounts = args.includes("--require-accounts");
+const cdpAutoOpen = args.includes("--auto-open");
+const cdpPort = Number(argValue("--port", "0"));
 
 const TARGETS = {
   methods: join(ROOT, "src", "methods.js"),
@@ -182,6 +185,48 @@ for (const name of declared) {
 }
 const promptSurface = [...permissionNeeds].filter((n) => n === NEEDS.SECRET || n === NEEDS.CONFIRM);
 
+/** `--auto-open`:拉起 App → 点 Explore 入口 → 输入 URL。尽力而为,失败只提示可手动打开。 */
+function openDappFromUi(device, packageName, pageUrl, { log } = {}) {
+  const say = (message) => log?.(message);
+  const adbShell = (args) => spawnSync("adb", ["-s", device, ...args], { encoding: "utf8" });
+  try {
+    adbShell(["shell", "monkey", "-p", packageName, "-c", "android.intent.category.LAUNCHER", "1"]);
+    say("已拉起 App,尝试进入 Explore …");
+    const exploreEntry = findByText(dumpUi(device), ["浏览", "探索", "Explore", "DApp", "Dapp"]);
+    if (!exploreEntry) {
+      say("没找到 Explore 入口(可能仍在解锁页):请手动解锁并在 Explore 里打开下面的地址");
+      return false;
+    }
+    tapBounds(device, exploreEntry.bounds);
+    say("已点击 Explore,等待搜索页 …");
+    const input = waitForInput(device, ["搜索", "网址", "输入", "URL", "DApp"], 8);
+    if (!input) {
+      say("没找到地址输入框:请手动输入地址");
+      return false;
+    }
+    tapBounds(device, input.bounds);
+    typeText(device, pageUrl);
+    const openEntry = findByText(dumpUi(device), ["打开", "前往", "访问", "Go", "搜索"]);
+    if (openEntry) tapBounds(device, openEntry.bounds);
+    else pressEnter(device);
+    say(`已提交地址 ${pageUrl}`);
+    return true;
+  } catch (error) {
+    say(`自动打开失败(${error?.message ?? error}):请手动在 Explore 里打开 ${pageUrl}`);
+    return false;
+  }
+}
+
+function waitForInput(device, candidates, attempts) {
+  for (let i = 0; i < attempts; i += 1) {
+    const input = findInput(dumpUi(device), candidates);
+    if (input) return input;
+    spawnSync("sleep", ["0.5"]);
+  }
+  return null;
+}
+
+
 // ---------------------------------------------------------------- 6. cdp(真钱包)
 if (cdpEnabled) {
   const details = [];
@@ -193,13 +238,16 @@ if (cdpEnabled) {
   try {
     if (!hasAdb()) throw new CdpError("找不到 adb:请把 platform-tools 加入 PATH", { code: "no_adb" });
     const device = pickDevice(cdpDevice);
-    server = await startStaticServer(dappDir);
+    server = await startStaticServer(dappDir, cdpPort);
     unforward = forwardPort(device, server.port);
     const pageUrl = new URL("index.html", server.url).href;
     if (!asJson) {
       console.log("");
       console.log(`[cdp] 设备 ${device} · dApp 已就绪:${pageUrl}`);
       console.log(`[cdp] 请在 JDID 里打开上面的地址(Explore 输入 URL),最多等 ${cdpWaitSeconds}s …`);
+    }
+    if (cdpAutoOpen) {
+      openDappFromUi(device, cdpPackage, pageUrl, { log: asJson ? null : (m) => console.log(`[cdp] ${m}`) });
     }
     const pid = await waitForPid(device, cdpPackage, { timeoutMs: 60_000 });
     const devtoolsPort = 9222;

@@ -91,7 +91,11 @@ node cli/conformance.mjs --cdp --wait 180
 - 没有设备 / App 没开:默认**降级为跳过**(报告里 `~ cdp`),加 `--require-cdp` 才判失败;
 - **`eth_accounts` 为空不算失败**(M-R7:未授权 origin 不注入地址),报告里是一条 `~` 警告;
   想让它变失败加 `--require-accounts`(那就要先在钱包里授权);
-- 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`。
+- 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`、`--port <端口>`、`--auto-open`。
+- **`--port` 固定端口有实际意义**:origin(`http://127.0.0.1:<port>`)是授权台账的键,端口随机就意味着
+  **每次都要重新授权**;固定成比如 `--port 5173` 后,一次授权后续几次都静默。
+- **`--auto-open`** 会 `monkey` 拉起 App、点 Explore、把地址打进输入框(用 `uiautomator dump` 找控件);
+  解锁页/改版后找不到控件时只打印提示并退回手动打开,不会瞎点。
 
 > release / 上架包没有这个能力(WebView 调试只在 debuggable 构建里),这是刻意的。
 
