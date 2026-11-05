@@ -25,7 +25,8 @@
     "gen:check": "node scripts/gen.mjs --check",
     "conformance": "node cli/conformance.mjs",
     "test": "node --test \"test/*.test.mjs\"",
-    "check": "npm run gen:check && npm test && npm run conformance"
+    "check": "npm run gen:check && npm test && npm run conformance",
+    "mcp": "node mcp/server.mjs"
   },
   "engines": {
     "node": ">=20"
