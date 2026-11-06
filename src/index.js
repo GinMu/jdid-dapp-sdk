@@ -117,31 +117,20 @@ export function createClient(options = {}) {
   const client = {
     wallet,
     request,
-    accounts: () => request("eth_accounts"),
-    /** 走钱包授权拿账户(EIP-1193 connect);未授权 origin 时 `eth_accounts` 恒为空。 */
+    /** 取得 EVM 账户(EIP-1193 connect,会触发 origin 授权)。SWTC 身份下返回 [],请用 connectSwtc。 */
     connect: () => request("eth_requestAccounts"),
-    /**
-     * SWTC 钱包的账户入口。`eth_accounts`/`eth_requestAccounts` 只报 EVM 账户(C185),
-     * SWTC 身份下返回空数组,必须改走 `swtc_requestAccounts`。
-     */
+    /** 取得 SWTC 账户(首次触发 origin 授权,之后同一 origin 静默)。 */
     connectSwtc: () => request("swtc_requestAccounts"),
-    /** SWTC 消息签名(DER 签名,参数顺序 [from, data]);EVM 钱包请用 `personalSign`。 */
-    swtcSignMessage: ({ from, data }) => request("swtc_signMessage", [from, data]),
-    chainId: () => request("eth_chainId"),
-    blockNumber: () => request("eth_blockNumber"),
-    personalSign: ({ message, address } = {}) =>
-      request("personal_sign", address ? [String(message), address] : [String(message)]),
-    signTypedData: (version, payload) =>
-      request(
-        version === "v3" ? "eth_signTypedData_v3" : version === "v4" ? "eth_signTypedData_v4" : "eth_signTypedData",
-        [payload],
-      ),
-    sendTransaction: (tx) => request("eth_sendTransaction", [tx]),
-    signTransaction: (tx) => request("eth_signTransaction", [tx]),
-    requestNfts: () => request("eth_requestNfts", []),
-    switchChain: (chainId) => request("wallet_switchEthereumChain", [{ chainId }]),
+    /** 按地址取 DID 账户名。 */
+    requestAccountName: (address) => request("did_requestAccountName", [address]),
+    /** 按地址取 Base58 公钥(会弹一次确认)。 */
+    base58PublicKey: (address) => request("did_getBase58PublicKey", [address]),
+    /** 签发凭证(需 { credential: … } 载荷,会弹确认)。 */
     issueCredential: (payload) => request("did_issueCredential", [payload]),
-    ipfsSign: ({ message } = {}) => request("ipfs_personalSign", [String(message)]),
+    /** 对载荷签名(需 account + secret),参数顺序 [data, address]。 */
+    ipfsSign: ({ data, address }) => request("ipfs_personalSign", [data, address]),
+    /** 按地址取公钥(会弹一次确认)。 */
+    ipfsPublicKey: (address) => request("ipfs_getPublicKey", [address]),
     /** 本 dApp 会碰到的授权面(给 manifest 与权限提示用)。 */
     permissions: () => METHODS.map((m) => ({ name: m.name, needs: m.needs, status: m.status })),
     requiresConfirmation: (name) => isKnownMethod(name) && METHOD_INDEX[name].needs.includes(NEEDS.CONFIRM),

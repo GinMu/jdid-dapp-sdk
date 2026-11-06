@@ -7,28 +7,47 @@ test("typed helper 走 mock 并记录调用", async () => {
   const wallet = createMockWallet();
   const jdid = createClient({ wallet });
 
-  assert.deepEqual(await jdid.accounts(), ["0x000000000000000000000000000000000000dEaD"]);
-  assert.equal(await jdid.chainId(), "0x3d");
-  assert.equal(await jdid.personalSign({ message: "hi" }), "0xMOCKSIGNATURE");
+  const accounts = await jdid.connectSwtc();
+  assert.deepEqual(accounts, ["jMOCKswtcAddressForTestingOnly1111111111"]);
+  const address = accounts[0];
+  assert.deepEqual(await jdid.requestAccountName(address), { name: "MOCK-NAME" });
+  assert.equal(await jdid.base58PublicKey(address), "MOCK-BASE58-KEY");
+  assert.deepEqual(
+    wallet.calls.map((c) => c.method),
+    ["swtc_requestAccounts", "did_requestAccountName", "did_getBase58PublicKey"],
+  );
+});
+
+test("7 个 helper 各自带着正确的方法名与参数顺序", async () => {
+  const wallet = createMockWallet();
+  const jdid = createClient({ wallet });
+  const address = "jMOCKswtcAddressForTestingOnly1111111111";
+
+  await jdid.connect();
+  await jdid.connectSwtc();
+  await jdid.requestAccountName(address);
+  await jdid.base58PublicKey(address);
+  await jdid.issueCredential({ credential: { type: ["VerifiableCredential"] } });
+  await jdid.ipfsSign({ data: [1, 2, 3], address });
+  await jdid.ipfsPublicKey(address);
 
   assert.deepEqual(
     wallet.calls.map((c) => c.method),
-    ["eth_accounts", "eth_chainId", "personal_sign"],
+    [
+      "eth_requestAccounts",
+      "swtc_requestAccounts",
+      "did_requestAccountName",
+      "did_getBase58PublicKey",
+      "did_issueCredential",
+      "ipfs_personalSign",
+      "ipfs_getPublicKey",
+    ],
   );
-  assert.deepEqual(wallet.calls[2].params, ["hi"]);
-});
-
-test("connect() 走 eth_requestAccounts(未授权时 eth_accounts 恒空,得先授权)", async () => {
-  const wallet = createMockWallet();
-  const accounts = await createClient({ wallet }).connect();
-  assert.deepEqual(wallet.calls.map((c) => c.method), ["eth_requestAccounts"]);
-  assert.equal(accounts.length, 1);
-});
-
-test("personalSign 带地址时按 EIP-1193 顺序传 [message, address]", async () => {
-  const wallet = createMockWallet();
-  await createClient({ wallet }).personalSign({ message: "hi", address: "0xabc" });
-  assert.deepEqual(wallet.calls[0].params, ["hi", "0xabc"]);
+  assert.deepEqual(wallet.calls[2].params, [address]);
+  assert.deepEqual(wallet.calls[3].params, [address]);
+  assert.deepEqual(wallet.calls[4].params, [{ credential: { type: ["VerifiableCredential"] } }]);
+  assert.deepEqual(wallet.calls[5].params, [[1, 2, 3], address]);
+  assert.deepEqual(wallet.calls[6].params, [address]);
 });
 
 test("未知方法在发出去之前就被拒(白名单)", async () => {
@@ -49,10 +68,10 @@ test("没有注入 provider 时给出可执行的报错(wallet_missing)", () => 
 });
 
 test("钱包拒绝时归一化成 wallet_rejected,并保留原始 code", async () => {
-  const wallet = createMockWallet({ failOn: ["personal_sign"] });
+  const wallet = createMockWallet({ failOn: ["did_getBase58PublicKey"] });
   const jdid = createClient({ wallet });
   await assert.rejects(
-    () => jdid.personalSign({ message: "hi" }),
+    () => jdid.base58PublicKey("jMOCKswtcAddressForTestingOnly1111111111"),
     (error) =>
       error instanceof JdidDappError &&
       error.code === "wallet_rejected" &&
@@ -65,23 +84,24 @@ test("钱包不响应时超时,而不是永远挂着", async () => {
   const wallet = { request: () => new Promise(() => {}) };
   const jdid = createClient({ wallet, timeoutMs: 20 });
   await assert.rejects(
-    () => jdid.accounts(),
+    () => jdid.connectSwtc(),
     (error) => error instanceof JdidDappError && error.code === "timeout",
   );
 });
 
 test("requiresConfirmation 与契约一致", () => {
   const jdid = createClient({ wallet: createMockWallet() });
-  assert.equal(jdid.requiresConfirmation("eth_sendTransaction"), true);
+  // 契约里唯一要用户"确认"的是签发凭证(needs 含 confirm);其余只有 account/secret。
   assert.equal(jdid.requiresConfirmation("did_issueCredential"), true);
-  assert.equal(jdid.requiresConfirmation("eth_accounts"), false);
+  assert.equal(jdid.requiresConfirmation("swtc_requestAccounts"), false);
+  assert.equal(jdid.requiresConfirmation("ipfs_personalSign"), false);
   assert.equal(jdid.requiresConfirmation("nope"), false);
 });
 
 test("permissions() 覆盖契约里全部方法", () => {
   const jdid = createClient({ wallet: createMockWallet() });
   const permissions = jdid.permissions();
-  assert.equal(permissions.length, 28);
+  assert.equal(permissions.length, 7);
   assert.ok(permissions.every((p) => Array.isArray(p.needs)));
 });
 
@@ -92,10 +112,10 @@ test("_tw_ transport:envelope 只含 name/network/id/params,响应按 id 结算"
     timeoutMs: 1_000,
   });
 
-  const pending = transport.request("eth_chainId");
+  const pending = transport.request("did_requestAccountName", ["jMOCK"]);
   assert.equal(sent.length, 1);
   assert.deepEqual(Object.keys(sent[0]), ["name", "network", "id", "params"]);
-  assert.equal(sent[0].name, "eth_chainId");
+  assert.equal(sent[0].name, "did_requestAccountName");
   assert.equal(sent[0].network, "swtc");
   assert.equal(transport.pendingCount, 1);
 

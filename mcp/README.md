@@ -27,10 +27,10 @@ node mcp/server.mjs          # 或 npm run mcp
 ## 工具
 
 | 工具 | 作用 | 参数 |
-|---|---|---|
+| --- | --- | --- |
 | `jdid_devices` | 列出可调试的设备 | — |
 | `jdid_open_dapp` | 拉起 App → Explore → 打开地址(优先点「最近访问」),等页面就绪 | `url`(必填)、`device`、`packageName` |
-| `jdid_probe` | 读 provider 状态:`eth_accounts` / `eth_chainId` / `web3_clientVersion` / `selectedAddress` | `device`、`packageName` |
+| `jdid_probe` | 读钱包诊断状态:`eth_accounts` / `eth_chainId` / `web3_clientVersion` / `selectedAddress`(**诊断用,不受 7 条契约限制**) | `device`、`packageName` |
 | `jdid_eval` | 在页面里执行一段 JS(可直接写 `await`) | `expression`(必填)、`device`、`url`、`timeoutMs` |
 | `jdid_tap` | 按可见文本点击 | `text`(必填)、`device` |
 | `jdid_type` | 向焦点输入文本 | `text`(必填)、`device` |

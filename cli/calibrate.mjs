@@ -12,6 +12,7 @@
  *   node cli/calibrate.mjs [--device <serial>] [--package <id>] [--timeout 8] [--json] [--undo-warning]
  */
 import { listTargets, evaluate, forwardDevtools, pickDevice, pickPageTarget, waitForPid } from "./cdp.mjs";
+import { loadContract } from "../scripts/gen.mjs";
 
 const args = process.argv.slice(2);
 const argValue = (flag, fallback) => {
@@ -25,29 +26,21 @@ const packageName = argValue("--package", "com.android.jdid");
 const address = argValue("--address", "");
 const devtoolsPort = Number(argValue("--port", "9222"));
 
-/** 只读/无资金风险;会动钱的方法不在默认列表里。 */
-const SAFE = [
-  "web3_clientVersion",
-  "eth_chainId",
-  "eth_accounts",
-  "eth_blockNumber",
-  "eth_requestNfts",
-  "eth_requestAccounts",
-  "swtc_requestAccounts",
-  "swtc_requestNfts",
-  "swtc_getPublicKey",
-  "did_requestAccountName",
-  "did_getBase58PublicKey",
-  "ipfs_getPublicKey",
-  "personal_ecRecover",
-  "personal_sign",
-  "swtc_signMessage",
-  "did_issueCredential",
-  "ipfs_personalSign",
-  "eth_getEncryptionPublicKey",
-  "eth_decrypt",
-];
-const DANGEROUS = ["swtc_sendTransaction", "swtc_multiSign", "swtc_batchTransactions", "eth_sendTransaction", "eth_signTransaction", "wallet_switchEthereumChain"];
+/** 会真正动钱的方法:即使契约里有,也绝不自动调用(只能人工确认)。 */
+const MONEY_METHODS = new Set([
+  "swtc_sendTransaction",
+  "swtc_multiSign",
+  "swtc_batchTransactions",
+  "eth_sendTransaction",
+  "eth_signTransaction",
+]);
+
+/**
+ * 默认只跑契约里的方法(`contract/methods.json`,当前 7 条全 verified),**动钱方法永不在默认列表里**。
+ * 校准的意义:把"文档里说的"变成"这一次真机上的"。
+ */
+const SAFE = loadContract().methods.map((m) => m.name).filter((name) => !MONEY_METHODS.has(name));
+const DANGEROUS = [...MONEY_METHODS, "wallet_switchEthereumChain"];
 
 function callExpression(method) {
   // 参数尽量给"无害的占位";签名类方法由钱包自己弹确认,用户在设备上点。

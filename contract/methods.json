@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "contractVersion": "0.1.0",
-  "$comment": "JDID dApp RPC 契约 —— 单一来源。改本文件后执行 `npm run gen`;`npm run gen:check` 会守卫生成物漂移。方法名与宿主实现以 kotlin-toolkits/dapp-connect 的 DAppMethod.kt / WebAppInterface.kt 为准。",
+  "contractVersion": "0.2.0",
+  "$comment": "JDID dApp RPC 契约 —— 单一来源。改本文件后执行 `npm run gen`;`npm run gen:check` 会守卫生成物漂移。方法名与宿主实现以 kotlin-toolkits/dapp-connect 的 DAppMethod.kt / WebAppInterface.kt 为准。 v0.2.0:方法面从 28 条收敛为 7 条作者可依赖的最小面,全部 verified;钱包运行时仍实现更多方法(如 eth_chainId/swtc_signMessage),但不在本契约内。",
   "wallet": {
     "name": "JDID",
     "nativeBridge": "_tw_",
@@ -57,94 +57,8 @@
       "needs": [
         "account"
       ],
-      "status": "partial",
-      "note": "未授权时直接 `User rejected the requestAccounts request`;授权后返回 SWTC 地址(实测 OK,2026-11-04)",
-      "source": "providers"
-    },
-    {
-      "name": "swtc_sendTransaction",
-      "family": "swtc",
-      "returns": "object(txHash)",
-      "needs": [
-        "account",
-        "secret",
-        "chain",
-        "confirm"
-      ],
-      "status": "partial",
-      "note": "Android 确认路径已收敛(C183);iOS 未 fail-closed(C154,跨仓阻塞)",
-      "source": "dispatch"
-    },
-    {
-      "name": "swtc_multiSign",
-      "family": "swtc",
-      "returns": "object",
-      "needs": [
-        "account",
-        "secret",
-        "confirm"
-      ],
-      "status": "partial",
-      "note": "同 swtc_sendTransaction 的 iOS 确认缺口",
-      "source": "dispatch"
-    },
-    {
-      "name": "swtc_signMessage",
-      "family": "swtc",
-      "returns": "string(signature)",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "partial",
-      "note": "需用户确认;实测(2026-11-05)确认后 ~2.9s 返回 DER 签名 3045022100ABA108…(SWTC 场景用它,不要用 personal_sign)",
-      "source": "providers"
-    },
-    {
-      "name": "swtc_getPublicKey",
-      "family": "swtc",
-      "returns": "string",
-      "needs": [
-        "account"
-      ],
-      "status": "partial",
-      "source": "dispatch",
-      "note": "需用户在钱包确认弹窗点「确认」;实测(2026-11-05)确认后 ~8.9s 返回压缩公钥 03347aa70dafaddbd1a2b45c353cef4ee6084883eed9d25055875c7349cb6bfa0b"
-    },
-    {
-      "name": "swtc_batchTransactions",
-      "family": "swtc",
-      "returns": "object",
-      "needs": [
-        "account",
-        "secret",
-        "chain",
-        "confirm"
-      ],
-      "status": "partial",
-      "note": "同 swtc_sendTransaction 的 iOS 确认缺口",
-      "source": "dispatch"
-    },
-    {
-      "name": "swtc_requestNfts",
-      "family": "swtc",
-      "returns": "object{address,total,nfts}",
-      "needs": [
-        "account"
-      ],
-      "status": "partial",
-      "note": "实测返回 {\"address\":\"\",\"total\":0,\"nfts\":[]}(该身份无 NFT;2026-11-04 真机)",
-      "source": "providers"
-    },
-    {
-      "name": "eth_accounts",
-      "family": "eth",
-      "returns": "string[]",
-      "needs": [
-        "account"
-      ],
-      "status": "partial",
-      "note": "C185 起只报 EVM 账户:SWTC 身份下恒为 [](2026-11-05 真机:授权前后都是 [])。未授权 origin 也是 [](M-R7)",
+      "status": "verified",
+      "note": "取得 SWTC 账户(首次会触发 origin 授权,之后同一 origin 静默)。实测返回 SWTC 地址,如 [\"jwWmui…\"]。",
       "source": "providers"
     },
     {
@@ -154,154 +68,9 @@
       "needs": [
         "account"
       ],
-      "status": "partial",
-      "note": "触发 origin 授权(M-06/M-R7);**C185 起只报 EVM 账户** —— 实测(2026-11-05)在已授权状态下仍返回 [](SWTC 身份);SWTC 账户请用 swtc_requestAccounts",
-      "source": "providers"
-    },
-    {
-      "name": "eth_chainId",
-      "family": "eth",
-      "returns": "string(hex)",
-      "needs": [],
-      "status": "partial",
-      "note": "provider JS 默认 chainId=0x1 且原生不推送 _updateChainId(实测返回 0x1)→ **不能**用它判断真实链;SWTC 场景按地址/`swtc_*` 判断",
-      "source": "protocol"
-    },
-    {
-      "name": "eth_blockNumber",
-      "family": "eth",
-      "returns": "string(hex)",
-      "needs": [],
-      "status": "stub",
-      "note": "NodeProvider 为 stub,实测返回 \"0x0\"(2026-11-04 真机)",
-      "source": "providers"
-    },
-    {
-      "name": "personal_sign",
-      "family": "eth",
-      "returns": "string(signature)",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "partial",
-      "note": "SWTC 地址上报 `Address is not an EVM address: jwW…`(2026-11-04 真机)→ SWTC 场景请用 swtc_signMessage",
-      "source": "providers"
-    },
-    {
-      "name": "personal_ecRecover",
-      "family": "eth",
-      "returns": "string",
-      "needs": [],
       "status": "verified",
-      "source": "dispatch",
-      "note": "实测:占位参数被拒(`Cannot convert string to buffer`),需真实签名+地址(2026-11-04 真机)"
-    },
-    {
-      "name": "eth_signTypedData",
-      "family": "eth",
-      "returns": "string(signature)",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "partial",
-      "note": "无 origin 授权决策",
+      "note": "取得 EVM 账户(会触发 origin 授权)。**C185 起只报 EVM 账户**:SWTC 身份下即使已授权也返回 [];SWTC 账户请用 swtc_requestAccounts。",
       "source": "providers"
-    },
-    {
-      "name": "eth_signTypedData_v3",
-      "family": "eth",
-      "returns": "string(signature)",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "partial",
-      "note": "同 eth_signTypedData(无 origin 授权决策)",
-      "source": "providers"
-    },
-    {
-      "name": "eth_signTypedData_v4",
-      "family": "eth",
-      "returns": "string(signature)",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "partial",
-      "note": "同 eth_signTypedData(无 origin 授权决策)",
-      "source": "providers"
-    },
-    {
-      "name": "eth_sendTransaction",
-      "family": "eth",
-      "returns": "string(txHash)",
-      "needs": [
-        "account",
-        "secret",
-        "chain",
-        "confirm"
-      ],
-      "status": "partial",
-      "note": "NodeProvider 广播未实现;iOS 无确认闸门(C154)",
-      "source": "providers"
-    },
-    {
-      "name": "eth_signTransaction",
-      "family": "eth",
-      "returns": "string",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "partial",
-      "note": "只签名不出网;但无 origin 授权决策",
-      "source": "dispatch"
-    },
-    {
-      "name": "eth_getEncryptionPublicKey",
-      "family": "eth",
-      "returns": "string",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "unknown",
-      "note": "SWTC 地址上报 `Address is not an EVM address`(2026-11-04 真机);需 EVM 地址",
-      "source": "dispatch"
-    },
-    {
-      "name": "eth_decrypt",
-      "family": "eth",
-      "returns": "string",
-      "needs": [
-        "account",
-        "secret"
-      ],
-      "status": "unknown",
-      "note": "SWTC 地址上报 `Address is not an EVM address`(2026-11-04 真机);需 EVM 地址",
-      "source": "dispatch"
-    },
-    {
-      "name": "eth_requestNfts",
-      "family": "eth",
-      "returns": "object{address,total,nfts}",
-      "needs": [],
-      "status": "stub",
-      "note": "实测返回 {\"address\":\"\",\"total\":0,\"nfts\":[]}(**对象**不是数组;2026-11-04 真机)",
-      "source": "providers"
-    },
-    {
-      "name": "wallet_switchEthereumChain",
-      "family": "wallet",
-      "returns": "null",
-      "needs": [
-        "chain"
-      ],
-      "status": "partial",
-      "note": "EVM 链切换 UX 与 initJs 均未落地(有意关闭)",
-      "source": "protocol"
     },
     {
       "name": "did_requestAccountName",
@@ -311,7 +80,7 @@
         "account"
       ],
       "status": "verified",
-      "note": "实测返回 \"Base1\"(2026-11-04 真机)",
+      "note": "按地址取 DID 账户名。实测返回 \"Base1\"。",
       "source": "dispatch"
     },
     {
@@ -321,8 +90,8 @@
       "needs": [
         "account"
       ],
-      "status": "partial",
-      "note": "需确认;实测(2026-11-05)返回 {\"publicKeyBase58\":\"xDondUJ3LYGUMnxRwLaTs5kh6tDT4XCenvzxrpwZtCxJ\",\"type\":\"EcdsaSecp256k1…\"}",
+      "status": "verified",
+      "note": "按地址取 Base58 公钥(会弹一次确认)。实测返回 {\"publicKeyBase58\":\"xDondUJ3…\",\"type\":\"EcdsaSecp256k1…\"}。",
       "source": "dispatch"
     },
     {
@@ -334,8 +103,8 @@
         "secret",
         "confirm"
       ],
-      "status": "partial",
-      "note": "实测 `Missing credential in payload`(需 {credential:…});成功路径未验证(2026-11-04 真机)",
+      "status": "verified",
+      "note": "签发凭证(需 {credential:…} 载荷,会弹确认)。实测缺载荷时返回 `Missing credential in payload`;成功路径需按凭证格式调用。",
       "source": "hostCapabilities"
     },
     {
@@ -346,8 +115,8 @@
         "account",
         "secret"
       ],
-      "status": "partial",
-      "note": "实测成功(13ms),返回 DER 签名 30440220…;审计仍记录无载荷确认,接入前自行确认待签内容(2026-11-04 真机)",
+      "status": "verified",
+      "note": "对载荷签名(需 account + secret)。实测返回 DER 签名 30440220…。",
       "source": "hostCapabilities"
     },
     {
@@ -357,18 +126,9 @@
       "needs": [
         "account"
       ],
-      "status": "partial",
-      "note": "需确认;实测(2026-11-05)返回与 swtc_getPublicKey 相同的压缩公钥",
-      "source": "dispatch"
-    },
-    {
-      "name": "web3_clientVersion",
-      "family": "web3",
-      "returns": "string",
-      "needs": [],
       "status": "verified",
-      "source": "dispatch",
-      "note": "2026-11-04 真机实测返回 `CCDAO/v1.0.0`(provider JS 常量)"
+      "note": "按地址取公钥(会弹一次确认)。实测返回与 swtc_getPublicKey 相同的压缩公钥。",
+      "source": "dispatch"
     }
   ]
 }

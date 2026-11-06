@@ -5,43 +5,25 @@ import { METHOD_INDEX, METHOD_NAMES, WALLET, NEEDS, isKnownMethod, methodsRequir
 
 const contract = loadContract();
 
-/** 与 kotlin-toolkits/dapp-connect 的 `DAppMethod.kt` 一一对应;改契约必须显式改这里。 */
+/**
+ * 作者可依赖的方法面(v0.2.0 起从 28 条收敛为 7 条,全部 verified)。
+ * 改契约必须显式改这里 —— 这是"契约收缩"的唯一入口。
+ */
 const EXPECTED_METHODS = [
   "swtc_requestAccounts",
-  "swtc_sendTransaction",
-  "swtc_multiSign",
-  "swtc_signMessage",
-  "swtc_getPublicKey",
-  "swtc_batchTransactions",
-  "swtc_requestNfts",
-  "eth_accounts",
   "eth_requestAccounts",
-  "eth_chainId",
-  "eth_blockNumber",
-  "personal_sign",
-  "personal_ecRecover",
-  "eth_signTypedData",
-  "eth_signTypedData_v3",
-  "eth_signTypedData_v4",
-  "eth_sendTransaction",
-  "eth_signTransaction",
-  "eth_getEncryptionPublicKey",
-  "eth_decrypt",
-  "eth_requestNfts",
-  "wallet_switchEthereumChain",
   "did_requestAccountName",
   "did_getBase58PublicKey",
   "did_issueCredential",
   "ipfs_personalSign",
   "ipfs_getPublicKey",
-  "web3_clientVersion",
 ];
 
 test("契约合法(validateContract 无问题)", () => {
   assert.deepEqual(validateContract(contract), []);
 });
 
-test("方法集合与 DAppMethod.kt 的 28 个方法一致", () => {
+test("方法集合就是作者可依赖的 7 条", () => {
   assert.deepEqual([...METHOD_NAMES].sort(), [...EXPECTED_METHODS].sort());
 });
 
@@ -66,11 +48,16 @@ test("不变量:needs 含 confirm 的方法一定也含 secret", () => {
   for (const m of confirm) assert.ok(m.needs.includes(NEEDS.SECRET), `${m.name} 缺 secret`);
 });
 
-test("已知风险在契约里如实标注(stub/partial 有 note)", () => {
-  assert.equal(METHOD_INDEX.eth_blockNumber.status, "stub");
-  assert.equal(METHOD_INDEX.eth_requestNfts.status, "stub");
-  assert.equal(METHOD_INDEX.personal_sign.status, "partial");
+test("7 条全部 verified,且每条都带实测说明", () => {
+  assert.equal(contract.methods.length, 7);
   for (const m of contract.methods) {
-    if (m.status !== "verified") assert.ok(m.note, `${m.name} 标了 ${m.status} 但没写 note`);
+    assert.equal(m.status, "verified", `${m.name} 应为 verified`);
+    assert.ok(m.note && m.note.length > 0, `${m.name} 缺实测说明(note)`);
+  }
+});
+
+test("动钱方法不在契约内(自检与 agent 都不该自动调用)", () => {
+  for (const name of ["swtc_sendTransaction", "eth_sendTransaction", "swtc_multiSign", "swtc_batchTransactions"]) {
+    assert.equal(isKnownMethod(name), false, `${name} 不应出现在契约里`);
   }
 });

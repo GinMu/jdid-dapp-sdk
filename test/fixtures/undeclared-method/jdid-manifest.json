@@ -2,5 +2,5 @@
   "name": "undeclared-method-fixture",
   "version": "0.1.0",
   "entry": "index.html",
-  "methods": ["eth_accounts"]
+  "methods": ["swtc_requestAccounts"]
 }

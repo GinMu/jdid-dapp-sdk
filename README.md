@@ -10,7 +10,7 @@
 ## 目录
 
 ```text
-contract/methods.json      契约单一来源(28 个 RPC 方法 + needs/status + 线格式)
+contract/methods.json      契约单一来源(7 个可依赖方法,全部 verified + needs/status + 线格式)
 schema/manifest.schema.json jdid-manifest.json 的 JSON Schema
 scripts/gen.mjs            生成器:methods.json → src/methods.js / src/index.d.ts / docs/capabilities.md
 src/index.js               createClient() typed 客户端 + createNativeTransport()(_tw_ 线格式)
@@ -89,7 +89,8 @@ node cli/conformance.mjs --cdp --wait 180
 - 默认只跑探针;要连 dApp 的 `run(wallet)` 一起跑就加 `--run-dapp`(示例 dApp 会先
   `eth_requestAccounts` 授权、再 `personal_sign`,需要已解锁,会弹确认);
 - 没有设备 / App 没开:默认**降级为跳过**(报告里 `~ cdp`),加 `--require-cdp` 才判失败;
-- **`eth_accounts` 为空不算失败**(M-R7:未授权 origin 不注入地址),报告里是一条 `~` 警告;
+- **`eth_accounts` 为空不算失败**(M-R7:未授权 origin 不注入地址),报告里是一条 `~` 警告
+  (注意:探针用的是**钱包诊断方法**,不受 7 条契约限制 —— 契约是"作者可依赖的面",不是"钱包只实现这些");
   想让它变失败加 `--require-accounts`(那就要先在钱包里授权);
 - 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`、`--port <端口>`、`--auto-open`。
 - **`--port` 固定端口有实际意义**:origin(`http://127.0.0.1:<port>`)是授权台账的键,端口随机就意味着
@@ -113,7 +114,7 @@ node cli/conformance.mjs --cdp --wait 180
 - **`--cdp` 真机通道**:静态服务器 + `adb reverse`/`forward` + 页面内 `Runtime.evaluate`
   跑只读探针;缺设备时降级跳过,`--require-cdp` 才判失败。
 
-**真机校准(2026-11-04,emulator-5554,SWTC 身份 `jwWmui…`)**:19 条方法逐条实测后写回契约——
+**历史真机校准(2026-11-04,28 条时代的记录,保留作证据)**:当时逐条实测后写回契约——
 
 - **授权前** `eth_accounts` → `[]`、`swtc_requestAccounts` → `User rejected`(M-R7 设计);
   设备上确认一次后 `swtc_requestAccounts` 返回地址;**C185 起 `eth_accounts` / `eth_requestAccounts`
@@ -133,7 +134,7 @@ node cli/conformance.mjs --cdp --wait 180
 
 还没做(下一步):
 
-- **用真机结果继续校准契约**(还有 14 条 `partial` / 5 条 `unknown` 待实测):拿 `--cdp` 的实测输出把 `partial`/`unknown` 逐条变成证据
+- **用真机结果继续校准契约**:v0.2.0 已把方法面收敛为 7 条且全部 `verified`;后续再加方法时,用 `--cdp` / `calibrate` 的实测输出把新条目坐实
   (需要解锁后跑一轮);
 - 按 origin 的授权台账与 dApp catalog(钱包侧要做运行时,本包只管声明与校验);
 - `create-jdid-dapp` 脚手架与 `@jdid/dapp-sdk` 的正式发版(现在 `private: true`)。

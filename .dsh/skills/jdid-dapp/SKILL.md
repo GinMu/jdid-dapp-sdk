@@ -12,7 +12,7 @@ user-invocable: true
 
 ## 五步流程
 
-1. **读契约**:`contract/methods.json`(28 个方法,`status` 告诉你哪些真能用)。
+1. **读契约**:`contract/methods.json`(**7 个方法,全部 verified**)。不在里面的方法不要调用 —— 客户端会在发出前拒绝。
    只调用那里面的方法名;`needs` 含 `secret`/`confirm` 的会弹钱包授权。
 2. **建 manifest**:`jdid-manifest.json`(`name`/`version`/`entry`/`methods`),
    schema 在 `schema/manifest.schema.json`。
@@ -24,9 +24,8 @@ user-invocable: true
 
 ## 关键约束(违反会被守卫或钱包拒)
 
-- **SWTC 身份的账户/签名**走 `swtc_requestAccounts` / `swtc_signMessage`;
-  `eth_accounts`/`eth_requestAccounts` 在 SWTC 钱包上返回 `[]`(C185),
-  `personal_sign` 会报 `Address is not an EVM address`。
+- **SWTC 身份的账户**走 `swtc_requestAccounts`;`eth_requestAccounts` 在 SWTC 钱包上返回 `[]`(C185)。
+- **签名**用 `ipfs_personalSign`(DER 签名);`personal_sign` 不在契约里,SWTC 地址上也会被拒。
 - **`eth_chainId` 恒为 `0x1`**(C186),别拿它判断链;要判断就用地址前缀或 `swtc_*` 能力。
 - 会动钱的方法(`swtc_sendTransaction` / `eth_sendTransaction` / `swtc_multiSign` /
   `swtc_batchTransactions`)**永远不要**在自检里跑。

@@ -3,33 +3,12 @@
 
 export type MethodName =
   | "swtc_requestAccounts"
-  | "swtc_sendTransaction"
-  | "swtc_multiSign"
-  | "swtc_signMessage"
-  | "swtc_getPublicKey"
-  | "swtc_batchTransactions"
-  | "swtc_requestNfts"
-  | "eth_accounts"
   | "eth_requestAccounts"
-  | "eth_chainId"
-  | "eth_blockNumber"
-  | "personal_sign"
-  | "personal_ecRecover"
-  | "eth_signTypedData"
-  | "eth_signTypedData_v3"
-  | "eth_signTypedData_v4"
-  | "eth_sendTransaction"
-  | "eth_signTransaction"
-  | "eth_getEncryptionPublicKey"
-  | "eth_decrypt"
-  | "eth_requestNfts"
-  | "wallet_switchEthereumChain"
   | "did_requestAccountName"
   | "did_getBase58PublicKey"
   | "did_issueCredential"
   | "ipfs_personalSign"
-  | "ipfs_getPublicKey"
-  | "web3_clientVersion";
+  | "ipfs_getPublicKey";
 
 export type MethodFamily = "eth" | "swtc" | "wallet" | "did" | "ipfs" | "web3";
 export type MethodNeed = "account" | "secret" | "confirm" | "chain";
@@ -102,20 +81,13 @@ export interface MethodPermission {
 export interface JdidClient {
   readonly wallet: WalletLike;
   request<T = unknown>(name: MethodName, params?: unknown): Promise<T>;
-  accounts(): Promise<string[]>;
   connect(): Promise<string[]>;
   connectSwtc(): Promise<string[]>;
-  swtcSignMessage(input: { from: string; data: string }): Promise<string>;
-  chainId(): Promise<string>;
-  blockNumber(): Promise<string>;
-  personalSign(args: { message: string; address?: string }): Promise<string>;
-  signTypedData(version: "v3" | "v4", payload: unknown): Promise<string>;
-  sendTransaction(tx: unknown): Promise<string>;
-  signTransaction(tx: unknown): Promise<string>;
-  requestNfts(): Promise<unknown[]>;
-  switchChain(chainId: string): Promise<null>;
+  requestAccountName(address: string): Promise<string>;
+  base58PublicKey(address: string): Promise<string>;
   issueCredential(payload: unknown): Promise<Record<string, unknown>>;
-  ipfsSign(args: { message: string }): Promise<string>;
+  ipfsSign(input: { data: unknown; address: string }): Promise<string>;
+  ipfsPublicKey(address: string): Promise<string>;
   permissions(): readonly MethodPermission[];
   requiresConfirmation(name: MethodName): boolean;
   on(event: string, listener: (...args: unknown[]) => void): () => void;

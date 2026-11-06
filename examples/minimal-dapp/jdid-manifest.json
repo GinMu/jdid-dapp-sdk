@@ -1,9 +1,12 @@
 {
-  "name": "minimal-dapp",
-  "title": "JDID 最小示例 dApp",
+  "name": "jdid-minimal-dapp",
   "version": "0.1.0",
-  "description": "拿地址 + 读 chainId + 签一条消息,演示契约与 conformance 的最小闭环。",
-  "entry": "index.html",
-  "methods": ["eth_requestAccounts", "eth_chainId", "personal_sign", "swtc_requestAccounts", "swtc_signMessage"],
-  "origins": ["https://example.com"]
+  "entry": "main.js",
+  "methods": [
+    "swtc_requestAccounts",
+    "did_requestAccountName",
+    "did_getBase58PublicKey",
+    "ipfs_getPublicKey",
+    "ipfs_personalSign"
+  ]
 }

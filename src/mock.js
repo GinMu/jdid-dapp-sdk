@@ -9,30 +9,14 @@ import { METHOD_INDEX, isKnownMethod } from "./methods.js";
 
 /** 明显是假值的桩数据:任何把它当真地址/真签名的代码都该被判为 bug。 */
 export const MOCK_RESULTS = Object.freeze({
-  eth_accounts: Object.freeze(["0x000000000000000000000000000000000000dEaD"]),
+  // 与契约(contract/methods.json,7 条)一一对应;新增方法时先改契约再补这里。
   eth_requestAccounts: Object.freeze(["0x000000000000000000000000000000000000dEaD"]),
   swtc_requestAccounts: Object.freeze(["jMOCKswtcAddressForTestingOnly1111111111"]),
-  eth_chainId: "0x3d",
-  eth_blockNumber: "0x10",
-  personal_sign: "0xMOCKSIGNATURE",
-  personal_ecRecover: "0x000000000000000000000000000000000000dEaD",
-  eth_signTypedData: "0xMOCKSIGNATURE",
-  eth_signTypedData_v3: "0xMOCKSIGNATURE",
-  eth_signTypedData_v4: "0xMOCKSIGNATURE",
-  eth_signTransaction: "0xMOCKSIGNEDTX",
-  eth_sendTransaction: "0xMOCKTXHASH",
-  swtc_signMessage: "0xMOCKSIGNATURE",
-  swtc_sendTransaction: "MOCK-SWTC-TX-HASH",
-  swtc_getPublicKey: "MOCK-PUBLIC-KEY",
-  swtc_requestNfts: Object.freeze([]),
-  eth_requestNfts: Object.freeze([]),
   did_requestAccountName: Object.freeze({ name: "MOCK-NAME" }),
   did_getBase58PublicKey: "MOCK-BASE58-KEY",
   did_issueCredential: Object.freeze({ vc: "MOCK-VC" }),
   ipfs_personalSign: "0xMOCKSIGNATURE",
   ipfs_getPublicKey: "MOCK-PUBLIC-KEY",
-  wallet_switchEthereumChain: null,
-  web3_clientVersion: "JDID/mock",
 });
 
 const clone = (value) =>
