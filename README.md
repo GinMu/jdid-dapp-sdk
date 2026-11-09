@@ -16,9 +16,11 @@ scripts/gen.mjs            生成器:methods.json → src/methods.js / src/index
 src/index.js               createClient() typed 客户端 + createNativeTransport()(_tw_ 线格式)
 src/mock.js                createMockWallet():测试/示例用的假钱包(桩值)
 cli/conformance.mjs        conformance CLI:契约/生成物/manifest/调用声明/Mock 冒烟
-examples/minimal-dapp/     最小示例 dApp(拿地址 + 读 chainId + 签一条消息)
+examples/minimal-dapp/     最小示例 dApp(SWTC 账户 + DID 名字 + Base58 公钥 + 签名)
 test/                      node --test 用例(含两条反向证明)
 docs/capabilities.md       生成的能力矩阵:哪些方法可用、要不要用户确认
+docs/architecture.md       目录/分层职责:契约 → 生成 → 消费,以及"想改 X 该动哪个目录"
+mcp/server.mjs             jdid-wallet-mcp:agent 驱动真机钱包的 9 个工具
 ```
 
 ## 快速开始
