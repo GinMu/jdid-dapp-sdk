@@ -131,6 +131,21 @@ export function createClient(options = {}) {
     ipfsSign: ({ data, address }) => request("ipfs_personalSign", [data, address]),
     /** 按地址取公钥(会弹一次确认)。 */
     ipfsPublicKey: (address) => request("ipfs_getPublicKey", [address]),
+    // ── DID bridge 能力(6 个)──
+    // 私钥一律由钱包按 address 取,页面永远不传 privateKey;
+    // did_publish / did_generateVC 会弹宿主确认,没有确认回调时钱包直接拒绝。
+    /** 发布 DID 文档(需钱包确认,会写链)。 */
+    publishDid: ({ did, didDocument, address }) => request("did_publish", [{ did, didDocument, address }]),
+    /** 解析 DID 文档;不存在返回 null。 */
+    resolveDid: (did) => request("did_resolve", [did]),
+    /** 读 DID 统计。 */
+    didStat: (did) => request("did_stat", [did]),
+    /** 生成 VC(需钱包确认)。 */
+    generateVC: (payload) => request("did_generateVC", [payload]),
+    /** 验证凭证(只读)。 */
+    verifyCredential: (credential) => request("did_verifyCredential", [credential]),
+    /** 生成 DID 文档(纯拼装)。 */
+    generateDidDoc: (payload) => request("did_generateDidDoc", [payload]),
     /** 本 dApp 会碰到的授权面(给 manifest 与权限提示用)。 */
     permissions: () => METHODS.map((m) => ({ name: m.name, needs: m.needs, status: m.status })),
     requiresConfirmation: (name) => isKnownMethod(name) && METHOD_INDEX[name].needs.includes(NEEDS.CONFIRM),

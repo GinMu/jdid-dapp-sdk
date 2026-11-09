@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "contractVersion": "0.2.0",
+  "contractVersion": "0.3.0",
   "$comment": "JDID dApp RPC 契约 —— 单一来源。改本文件后执行 `npm run gen`;`npm run gen:check` 会守卫生成物漂移。方法名与宿主实现以 kotlin-toolkits/dapp-connect 的 DAppMethod.kt / WebAppInterface.kt 为准。 v0.2.0:方法面从 28 条收敛为 7 条作者可依赖的最小面,全部 verified;钱包运行时仍实现更多方法(如 eth_chainId/swtc_signMessage),但不在本契约内。",
   "wallet": {
     "name": "JDID",
@@ -35,7 +35,8 @@
     "protocol": "jdid-multi-platform/docs/dapp-webview-bridge-audit.md §2.2",
     "providers": "jdid-multi-platform/docs/dapp-webview-bridge-audit.md §2.3",
     "hostCapabilities": "jdid-multi-platform/docs/dapp-webview-bridge-audit.md §2.4",
-    "securityDebt": "kotlin-toolkits/docs/SECURITY_AUDIT.md"
+    "securityDebt": "kotlin-toolkits/docs/SECURITY_AUDIT.md",
+    "didBridge": "kotlin-toolkits/webview-bridge/src/main/assets/did-bridge.js(publishDid / didResolve / didStat / generateVC / verifyCredential / generateDidDoc);Android 经 DidSdk、iOS 经 SwiftDid 转发,宿主注入私钥"
   },
   "needsCatalog": {
     "account": "读取当前账户地址(仅注入当前地址;历史账户不可选)",
@@ -129,6 +130,68 @@
       "status": "verified",
       "note": "按地址取公钥(会弹一次确认)。实测返回与 swtc_getPublicKey 相同的压缩公钥。",
       "source": "dispatch"
+    },
+    {
+      "name": "did_publish",
+      "family": "did",
+      "returns": "object{code,message}",
+      "needs": [
+        "account",
+        "secret",
+        "confirm"
+      ],
+      "status": "partial",
+      "note": "发布 DID 文档。私钥由钱包按 address 取(页面**不能**传 privateKey);必须经宿主确认,无回调即拒。实测(2026-11-09)可调用(缺 address 时钱包报 `Missing address`),写链成功路径未验证。",
+      "source": "didBridge"
+    },
+    {
+      "name": "did_resolve",
+      "family": "did",
+      "returns": "object or null",
+      "needs": [],
+      "status": "verified",
+      "note": "解析 DID 文档;不存在时返回 null。不落库。实测(2026-11-09)对该 SWTC 地址返回 null(未上链),调用路径正常。",
+      "source": "didBridge"
+    },
+    {
+      "name": "did_stat",
+      "family": "did",
+      "returns": "object",
+      "needs": [],
+      "status": "partial",
+      "note": "读 DID 统计。实测(2026-11-09)已路由到钱包,但该 DID 的 stat 解析失败(`no link named \"b2\" under bafybei…`);需要有链上 stat 的 DID 再验。",
+      "source": "didBridge"
+    },
+    {
+      "name": "did_generateVC",
+      "family": "did",
+      "returns": "object(VC)",
+      "needs": [
+        "account",
+        "secret",
+        "confirm"
+      ],
+      "status": "partial",
+      "note": "生成 VC。私钥由钱包按 address 取;必须经宿主确认,无回调即拒。实测(2026-11-09)可调用(缺 address 时钱包报 `Missing address`),签发成功路径未验证。",
+      "source": "didBridge"
+    },
+    {
+      "name": "did_verifyCredential",
+      "family": "did",
+      "returns": "object{verified,unknown,results?}",
+      "needs": [],
+      "status": "verified",
+      "note": "验证凭证(只读)。参数是凭证 JSON 字符串或对象。实测(2026-11-09)返回 {\"verified\":false,\"unknown\":false,\"results\":\"[]\"}。",
+      "source": "didBridge"
+    },
+    {
+      "name": "did_generateDidDoc",
+      "family": "did",
+      "returns": "object",
+      "needs": [],
+      "status": "verified",
+      "note": "生成 DID 文档(纯拼装,不需要私钥)。实测(2026-11-09,emulator-5554,SWTC 身份)239ms 返回带 @context/id/created/updated 的文档对象。",
+      "source": "didBridge"
     }
   ]
 }

@@ -50,6 +50,27 @@ test("7 个 helper 各自带着正确的方法名与参数顺序", async () => {
   assert.deepEqual(wallet.calls[6].params, [address]);
 });
 
+test("DID bridge 的 6 个 helper 带着正确的方法名与参数顺序", async () => {
+  const wallet = createMockWallet();
+  const jdid = createClient({ wallet });
+  const address = "jMOCKswtcAddressForTestingOnly1111111111";
+
+  await jdid.publishDid({ did: "did:swtc:abc", didDocument: { id: "did:swtc:abc" }, address });
+  await jdid.resolveDid("did:swtc:abc");
+  await jdid.didStat("did:swtc:abc");
+  await jdid.generateVC({ address, types: ["VerifiableCredential"] });
+  await jdid.verifyCredential('{"id":"vc"}');
+  await jdid.generateDidDoc({ did: "did:swtc:abc" });
+
+  assert.deepEqual(
+    wallet.calls.map((c) => c.method),
+    ["did_publish", "did_resolve", "did_stat", "did_generateVC", "did_verifyCredential", "did_generateDidDoc"],
+  );
+  assert.deepEqual(wallet.calls[0].params, [{ did: "did:swtc:abc", didDocument: { id: "did:swtc:abc" }, address }]);
+  assert.deepEqual(wallet.calls[1].params, ["did:swtc:abc"]);
+  assert.deepEqual(wallet.calls[4].params, ['{"id":"vc"}']);
+});
+
 test("未知方法在发出去之前就被拒(白名单)", async () => {
   const wallet = createMockWallet();
   const jdid = createClient({ wallet });
@@ -101,7 +122,7 @@ test("requiresConfirmation 与契约一致", () => {
 test("permissions() 覆盖契约里全部方法", () => {
   const jdid = createClient({ wallet: createMockWallet() });
   const permissions = jdid.permissions();
-  assert.equal(permissions.length, 7);
+  assert.equal(permissions.length, 13);
   assert.ok(permissions.every((p) => Array.isArray(p.needs)));
 });
 

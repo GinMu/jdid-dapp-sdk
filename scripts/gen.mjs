@@ -237,6 +237,12 @@ function renderTypes(contract) {
   out.push("  issueCredential(payload: unknown): Promise<Record<string, unknown>>;");
   out.push("  ipfsSign(input: { data: unknown; address: string }): Promise<string>;");
   out.push("  ipfsPublicKey(address: string): Promise<string>;");
+  out.push("  publishDid(input: { did: string; didDocument: unknown; address: string }): Promise<Record<string, unknown>>;");
+  out.push("  resolveDid(did: string): Promise<Record<string, unknown> | null>;");
+  out.push("  didStat(did: string): Promise<Record<string, unknown>>;");
+  out.push("  generateVC(payload: Record<string, unknown>): Promise<Record<string, unknown>>;");
+  out.push("  verifyCredential(credential: string | Record<string, unknown>): Promise<Record<string, unknown>>;");
+  out.push("  generateDidDoc(payload: Record<string, unknown>): Promise<Record<string, unknown>>;");
   out.push("  permissions(): readonly MethodPermission[];");
   out.push("  requiresConfirmation(name: MethodName): boolean;");
   out.push("  on(event: string, listener: (...args: unknown[]) => void): () => void;");

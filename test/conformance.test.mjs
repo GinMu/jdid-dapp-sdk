@@ -28,7 +28,7 @@ test("--json 输出可被机器消费", () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
-  assert.equal(report.contractVersion, "0.2.0");
+  assert.equal(report.contractVersion, "0.3.0");
   assert.deepEqual(report.declaredMethods, [
     "swtc_requestAccounts",
     "did_requestAccountName",

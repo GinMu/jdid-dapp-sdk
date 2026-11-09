@@ -17,6 +17,13 @@ export const MOCK_RESULTS = Object.freeze({
   did_issueCredential: Object.freeze({ vc: "MOCK-VC" }),
   ipfs_personalSign: "0xMOCKSIGNATURE",
   ipfs_getPublicKey: "MOCK-PUBLIC-KEY",
+  // DID bridge(6):只给能跑通 smoke 的桩值
+  did_publish: Object.freeze({ code: "0", message: "success" }),
+  did_resolve: Object.freeze({ id: "did:swtc:MOCK" }),
+  did_stat: Object.freeze({ cid: "MOCK-CID" }),
+  did_generateVC: Object.freeze({ id: "MOCK-VC" }),
+  did_verifyCredential: Object.freeze({ verified: false }),
+  did_generateDidDoc: Object.freeze({ id: "did:swtc:MOCK" }),
 });
 
 const clone = (value) =>

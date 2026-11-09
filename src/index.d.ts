@@ -8,12 +8,18 @@ export type MethodName =
   | "did_getBase58PublicKey"
   | "did_issueCredential"
   | "ipfs_personalSign"
-  | "ipfs_getPublicKey";
+  | "ipfs_getPublicKey"
+  | "did_publish"
+  | "did_resolve"
+  | "did_stat"
+  | "did_generateVC"
+  | "did_verifyCredential"
+  | "did_generateDidDoc";
 
 export type MethodFamily = "eth" | "swtc" | "wallet" | "did" | "ipfs" | "web3";
 export type MethodNeed = "account" | "secret" | "confirm" | "chain";
 export type MethodStatus = "verified" | "partial" | "stub" | "unknown";
-export type MethodSource = "methodEnum" | "dispatch" | "protocol" | "providers" | "hostCapabilities" | "securityDebt";
+export type MethodSource = "methodEnum" | "dispatch" | "protocol" | "providers" | "hostCapabilities" | "securityDebt" | "didBridge";
 
 export interface MethodMeta {
   readonly name: MethodName;
@@ -88,6 +94,12 @@ export interface JdidClient {
   issueCredential(payload: unknown): Promise<Record<string, unknown>>;
   ipfsSign(input: { data: unknown; address: string }): Promise<string>;
   ipfsPublicKey(address: string): Promise<string>;
+  publishDid(input: { did: string; didDocument: unknown; address: string }): Promise<Record<string, unknown>>;
+  resolveDid(did: string): Promise<Record<string, unknown> | null>;
+  didStat(did: string): Promise<Record<string, unknown>>;
+  generateVC(payload: Record<string, unknown>): Promise<Record<string, unknown>>;
+  verifyCredential(credential: string | Record<string, unknown>): Promise<Record<string, unknown>>;
+  generateDidDoc(payload: Record<string, unknown>): Promise<Record<string, unknown>>;
   permissions(): readonly MethodPermission[];
   requiresConfirmation(name: MethodName): boolean;
   on(event: string, listener: (...args: unknown[]) => void): () => void;

@@ -1,7 +1,7 @@
 // AUTO-GENERATED from contract/methods.json by scripts/gen.mjs — 不要手改。
 // 改动流程:改 contract/methods.json → npm run gen → 把三份生成物一起提交。
 
-export const CONTRACT_VERSION = "0.2.0";
+export const CONTRACT_VERSION = "0.3.0";
 
 export const NEEDS = Object.freeze({
   ACCOUNT: "account",
@@ -91,6 +91,60 @@ export const METHODS = Object.freeze([
     status: "verified",
     note: "按地址取公钥(会弹一次确认)。实测返回与 swtc_getPublicKey 相同的压缩公钥。",
     source: "dispatch",
+  }),
+  Object.freeze({
+    name: "did_publish",
+    family: "did",
+    returns: "object{code,message}",
+    needs: Object.freeze(["account","secret","confirm"]),
+    status: "partial",
+    note: "发布 DID 文档。私钥由钱包按 address 取(页面**不能**传 privateKey);必须经宿主确认,无回调即拒。实测(2026-11-09)可调用(缺 address 时钱包报 `Missing address`),写链成功路径未验证。",
+    source: "didBridge",
+  }),
+  Object.freeze({
+    name: "did_resolve",
+    family: "did",
+    returns: "object or null",
+    needs: Object.freeze([]),
+    status: "verified",
+    note: "解析 DID 文档;不存在时返回 null。不落库。实测(2026-11-09)对该 SWTC 地址返回 null(未上链),调用路径正常。",
+    source: "didBridge",
+  }),
+  Object.freeze({
+    name: "did_stat",
+    family: "did",
+    returns: "object",
+    needs: Object.freeze([]),
+    status: "partial",
+    note: "读 DID 统计。实测(2026-11-09)已路由到钱包,但该 DID 的 stat 解析失败(`no link named \"b2\" under bafybei…`);需要有链上 stat 的 DID 再验。",
+    source: "didBridge",
+  }),
+  Object.freeze({
+    name: "did_generateVC",
+    family: "did",
+    returns: "object(VC)",
+    needs: Object.freeze(["account","secret","confirm"]),
+    status: "partial",
+    note: "生成 VC。私钥由钱包按 address 取;必须经宿主确认,无回调即拒。实测(2026-11-09)可调用(缺 address 时钱包报 `Missing address`),签发成功路径未验证。",
+    source: "didBridge",
+  }),
+  Object.freeze({
+    name: "did_verifyCredential",
+    family: "did",
+    returns: "object{verified,unknown,results?}",
+    needs: Object.freeze([]),
+    status: "verified",
+    note: "验证凭证(只读)。参数是凭证 JSON 字符串或对象。实测(2026-11-09)返回 {\"verified\":false,\"unknown\":false,\"results\":\"[]\"}。",
+    source: "didBridge",
+  }),
+  Object.freeze({
+    name: "did_generateDidDoc",
+    family: "did",
+    returns: "object",
+    needs: Object.freeze([]),
+    status: "verified",
+    note: "生成 DID 文档(纯拼装,不需要私钥)。实测(2026-11-09,emulator-5554,SWTC 身份)239ms 返回带 @context/id/created/updated 的文档对象。",
+    source: "didBridge",
   }),
 ]);
 

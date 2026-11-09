@@ -17,13 +17,20 @@ const EXPECTED_METHODS = [
   "did_issueCredential",
   "ipfs_personalSign",
   "ipfs_getPublicKey",
+  // DID bridge 能力(2026-11-09 加入;两端已实现)
+  "did_publish",
+  "did_resolve",
+  "did_stat",
+  "did_generateVC",
+  "did_verifyCredential",
+  "did_generateDidDoc",
 ];
 
 test("契约合法(validateContract 无问题)", () => {
   assert.deepEqual(validateContract(contract), []);
 });
 
-test("方法集合就是作者可依赖的 7 条", () => {
+test("方法集合就是作者可依赖的 13 条", () => {
   assert.deepEqual([...METHOD_NAMES].sort(), [...EXPECTED_METHODS].sort());
 });
 
@@ -48,12 +55,19 @@ test("不变量:needs 含 confirm 的方法一定也含 secret", () => {
   for (const m of confirm) assert.ok(m.needs.includes(NEEDS.SECRET), `${m.name} 缺 secret`);
 });
 
-test("7 条全部 verified,且每条都带实测说明", () => {
-  assert.equal(contract.methods.length, 7);
+test("13 条都带说明;核心 7 条 verified,DID bridge 6 条待实测(partial)", () => {
+  assert.equal(contract.methods.length, 13);
   for (const m of contract.methods) {
-    assert.equal(m.status, "verified", `${m.name} 应为 verified`);
-    assert.ok(m.note && m.note.length > 0, `${m.name} 缺实测说明(note)`);
+    assert.ok(m.note && m.note.length > 0, `${m.name} 缺说明(note)`);
   }
+  const core = contract.methods.slice(0, 7);
+  for (const m of core) assert.equal(m.status, "verified", `${m.name} 应为 verified`);
+  const bridge = contract.methods.slice(7);
+  assert.equal(bridge.length, 6);
+  const verified = bridge.filter((m) => m.status === "verified").map((m) => m.name).sort();
+  assert.deepEqual(verified, ["did_generateDidDoc", "did_resolve", "did_verifyCredential"].sort());
+  const pending = bridge.filter((m) => m.status === "partial").map((m) => m.name).sort();
+  assert.deepEqual(pending, ["did_generateVC", "did_publish", "did_stat"].sort());
 });
 
 test("动钱方法不在契约内(自检与 agent 都不该自动调用)", () => {
