@@ -12,7 +12,8 @@ user-invocable: true
 
 ## 五步流程
 
-1. **读契约**:`contract/methods.json`(**7 个方法,全部 verified**)。不在里面的方法不要调用 —— 客户端会在发出前拒绝。
+1. **读契约**:`contract/methods.json`(**13 个方法:10 verified + 3 partial**;`status` 告诉你哪些能直接依赖)。
+   不在里面的方法不要调用 —— 客户端会在发出前拒绝。DID bridge 的 6 个见第 6 步。
    只调用那里面的方法名;`needs` 含 `secret`/`confirm` 的会弹钱包授权。
 2. **建 manifest**:`jdid-manifest.json`(`name`/`version`/`entry`/`methods`),
    schema 在 `schema/manifest.schema.json`。

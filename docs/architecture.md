@@ -6,13 +6,13 @@
 ## 一、依赖方向
 
 ```text
-contract/methods.json            唯一事实源:7 个方法 + needs/status/note + 钱包线格式
+contract/methods.json            唯一事实源:13 个方法(10 verified + 3 partial)+ needs/status/note + 钱包线格式
         │
         │  scripts/gen.mjs(校验 + 渲染)
         ▼
 src/methods.js   src/index.d.ts   docs/capabilities.md      ← 三份「生成物」,不要手改
         │
-        ├─► src/index.js  作者页面里 import 的客户端(createClient / 7 个 helper)
+        ├─► src/index.js  作者页面里 import 的客户端(createClient / 13 个 helper)
         ├─► src/mock.js   测试与自检用的假钱包
         ├─► cli/          静态自检、真机通道、逐条校准
         └─► mcp/          agent 驱动钱包的 MCP server(复用 cli 的传输层)
@@ -71,5 +71,5 @@ node cli/conformance.mjs      # 4) 五项检查
 ## 五、边界:不在这些目录里的东西
 
 - **运行时不在本仓**:`window.ethereum` / `window.ccdao` 由 JDID 钱包(另一个仓)注入;本仓只做"调用前的闸门 + 调用后的归一化"。
-- **契约是"作者可依赖的面",不是"钱包只实现这些"**:钱包还实现了 `eth_chainId`、`swtc_signMessage` 等,但不在 7 条契约内,客户端会在发出前拒绝。`mcp` 的 `jdid_probe` 属于**钱包诊断**,可用契约外方法(已在 `mcp/README.md` 注明)。
+- **契约是"作者可依赖的面",不是"钱包只实现这些"**:钱包还实现了 `eth_chainId`、`swtc_signMessage` 等,但不在 13 条契约内,客户端会在发出前拒绝。`mcp` 的 `jdid_probe` 属于**钱包诊断**,可用契约外方法(已在 `mcp/README.md` 注明)。
 - **发布白名单**:`package.json` 的 `files`(`src`/`contract`/`schema`/`cli`/`docs`)决定 npm 包包含什么;`mcp/` 目前**不在里面**(发布前需补)。
