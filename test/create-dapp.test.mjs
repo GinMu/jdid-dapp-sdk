@@ -30,9 +30,12 @@ test("create-jdid-dapp 从示例生成一个可自检的 dApp", () => {
     assert.ok(manifest.methods.length > 0);
 
     // 生成物 import 的是包名;离线环境下用 node_modules 软链指向本仓,模拟"装好包"后的状态
-    const modules = join(dir, "my-first-dapp", "node_modules", "@jdid");
-    mkdirSync(modules, { recursive: true });
-    symlinkSync(ROOT, join(modules, "dapp-sdk"), "dir");
+    const { name } = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+    const [scope, bare] = name.startsWith("@") ? name.split("/") : [null, name];
+    const modulesRoot = join(dir, "my-first-dapp", "node_modules");
+    const linkPath = scope ? join(modulesRoot, scope, bare) : join(modulesRoot, bare);
+    mkdirSync(scope ? join(modulesRoot, scope) : modulesRoot, { recursive: true });
+    symlinkSync(ROOT, linkPath, "dir");
 
     // 生成出来的骨架必须能直接过 conformance(否则"脚手架"就是坏的)
     const conformance = spawnSync(

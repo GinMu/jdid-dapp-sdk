@@ -1,6 +1,6 @@
 ---
 name: jdid-dapp
-description: 用 @jdid/dapp-sdk 的契约给 JDID 钱包生成/修改一个 dApp,并用 conformance 自检(Mock 与真机两档)。当用户说"做一个 dApp""给钱包加个页面/功能""接一下 JDID 的钱包能力"时使用。
+description: 用 @jccdex/jdid-dapp-sdk 的契约给 JDID 钱包生成/修改一个 dApp,并用 conformance 自检(Mock 与真机两档)。当用户说"做一个 dApp""给钱包加个页面/功能""接一下 JDID 的钱包能力"时使用。
 whenToUse: 用户要在 JDID 钱包里跑一个自建 dApp,或要改动本仓示例 dApp / 契约 / conformance。
 user-invocable: true
 ---
@@ -17,7 +17,7 @@ user-invocable: true
    只调用那里面的方法名;`needs` 含 `secret`/`confirm` 的会弹钱包授权。
 2. **建 manifest**:`jdid-manifest.json`(`name`/`version`/`entry`/`methods`),
    schema 在 `schema/manifest.schema.json`。
-3. **写逻辑**:`import { createClient } from "@jdid/dapp-sdk"` → `createClient(window.ethereum)`;
+3. **写逻辑**:`import { createClient } from "@jccdex/jdid-dapp-sdk"` → `createClient(window.ethereum)`;
    导出 `run(wallet)` 便于 Node 里用 `createMockWallet()` 跑同一份代码。
 4. **自检**:`node cli/conformance.mjs --dapp <dir>`(契约/生成物/manifest/声明覆盖/冒烟 五项)。
 5. **(可选)真机**:`node cli/conformance.mjs --cdp --auto-open --port 5173`

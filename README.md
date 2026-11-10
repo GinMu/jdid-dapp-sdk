@@ -1,4 +1,4 @@
-# `@jdid/dapp-sdk` —— 最小骨架
+# `@jccdex/jdid-dapp-sdk` —— 最小骨架
 
 给 **dApp 作者**用的工具链骨架:**契约单一来源 → 类型/常量生成 → conformance 自检**。
 零依赖,只用 Node 内置模块。
@@ -27,33 +27,33 @@ mcp/server.mjs             jdid-wallet-mcp:agent 驱动真机钱包的 9 个工�
 
 本包同时是一个 **DSH bundle**:`package.json` 的 `dsh.bundle.patch` 指向
 [`dsh/cordis.patch.yml`](dsh/cordis.patch.yml),里面用 `insert` 注册 `mcp-jdid-wallet`
-(`npx -y @jdid/dapp-sdk jdid-wallet-mcp`)。所以发布后:
+(`npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp`)。所以发布后:
 
-1. 打开 DSH 的 **Settings → Plugins**,安装 `@jdid/dapp-sdk`;
+1. 打开 DSH 的 **Settings → Plugins**,安装 `@jccdex/jdid-dapp-sdk`;
 2. 重启 `dsh web`;
 3. 新会话里就多了 12 个 `mcp__jdid-wallet__*` 工具(设备/开页/探针/DID/自检)。
 
 等价 CLI:
 
 ```sh
-dsh plugin --profile web add @jdid/dapp-sdk
+dsh plugin --profile web add @jccdex/jdid-dapp-sdk
 ```
 
 发布前想本地试:同一份补丁把 `command/args` 换成 `node /abs/path/mcp/server.mjs` 即可
 (见 README 上面的注册示例)——`npx` 那一行依赖 registry 上的包。
 
-## 发布与起步(0.3.0 起)
+## 发布与起步
 
 本包已可发布(`private` 已去掉,`files` 含 `src/contract/schema/cli/docs/mcp/examples`,版本跟契约版本对齐)。
 
 ```sh
 # 1) 从模板起步(拷 examples/minimal-dapp 并改写 import 为包名)
-npx @jdid/dapp-sdk my-first-dapp
+npx @jccdex/jdid-dapp-sdk my-first-dapp
 cd my-first-dapp && npm i
-node node_modules/@jdid/dapp-sdk/cli/conformance.mjs --dapp .   # 静态自检,不需要设备
+node node_modules/@jccdex/jdid-dapp-sdk/cli/conformance.mjs --dapp .   # 静态自检,不需要设备
 
 # 2) 在 JDID App 里真机联调
-npx @jdid/dapp-sdk jdid-wallet-mcp    # 以 stdio 起 MCP server,交给 agent 驱动
+npx @jccdex/jdid-dapp-sdk jdid-wallet-mcp    # 以 stdio 起 MCP server,交给 agent 驱动
 ```
 
 三个 bin:
@@ -81,7 +81,7 @@ npm run check        # 以上三件套
 ## 写一个 dApp 的最小流程
 
 1. 建目录,放 `jdid-manifest.json`(必填 `name`/`version`/`entry`/`methods`,见 `schema/manifest.schema.json`);
-2. 页面里 `import { createClient } from "@jdid/dapp-sdk"`,用 `createClient(window.ethereum)`;
+2. 页面里 `import { createClient } from "@jccdex/jdid-dapp-sdk"`,用 `createClient(window.ethereum)`;
 3. 只调用契约里的方法(SDK 会在**发出之前**拒绝未知方法名);
 4. `run(wallet)` 这个约定让你能用 `createMockWallet()` 在 Node 里跑同一份逻辑 —— conformance 靠它做冒烟;
 5. `npx jdid-dapp-conformance --dapp .` 自检,再拿到 JDID App 的 Explore 页里打开。
@@ -182,7 +182,7 @@ node cli/conformance.mjs --cdp --wait 180
 - **用真机结果继续校准契约**:v0.3.0 起方法面 13 条(10 `verified` + 3 `partial`);新增方法时用 `--cdp` / `calibrate` 的实测输出把 `partial` 逐条变成证据
   (需要解锁后跑一轮);
 - 按 origin 的授权台账与 dApp catalog(钱包侧要做运行时,本包只管声明与校验);
-- `create-jdid-dapp` 脚手架与 `@jdid/dapp-sdk` 的正式发版(现在 `private: true`)。
+- `create-jdid-dapp` 脚手架已就绪;正式发版只需 `npm publish --access public`。
 
 ## 与 harness 的关系
 

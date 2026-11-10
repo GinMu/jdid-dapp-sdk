@@ -22,7 +22,10 @@ test("bundle 补丁用 insert 注册 mcp-jdid-wallet,并走已发布的包名", 
   assert.match(text, /transport: stdio/);
   // 发布后直接按包名起 bin,不写死本机绝对路径
   assert.match(text, /command: npx/);
-  assert.match(text, /args: \["-y", "@jdid\/dapp-sdk", "jdid-wallet-mcp"\]/);
+  assert.ok(
+    text.includes(`args: ["-y", "${pkg.name}", "jdid-wallet-mcp"]`),
+    `补丁里的 npx 参数必须与 package.json 的 name 一致(${pkg.name})`,
+  );
 });
 
 test("dsh/ 在发布白名单里,bin 里有 jdid-wallet-mcp", () => {

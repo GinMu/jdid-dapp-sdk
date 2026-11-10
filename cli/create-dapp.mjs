@@ -3,8 +3,10 @@
  * `create-jdid-dapp` —— 从本包自带的示例拷一份可跑的 dApp 骨架。
  *
  * 用法:
- *   npx @jdid/dapp-sdk my-dapp         # 默认拷 examples/minimal-dapp 到 ./my-dapp
- *   npx @jdid/dapp-sdk my-dapp --force # 目录已存在也覆盖
+ *   npx <package> my-dapp         # 默认拷 examples/minimal-dapp 到 ./my-dapp
+ *   npx <package> my-dapp --force # 目录已存在也覆盖
+ *
+ * <package> 从本仓 package.json 的 name 读,不在代码里另写一份。
  *
  * 不联网、不装依赖:示例本身零依赖,`node cli/conformance.mjs --dapp my-dapp` 就能自检。
  */
@@ -14,6 +16,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TEMPLATE = join(ROOT, "examples", "minimal-dapp");
+const PKG = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+const PACKAGE_NAME = PKG.name;
+const PACKAGE_RANGE = `^${PKG.version}`;
 
 function main(argv) {
   const args = argv.slice(2);
@@ -27,7 +32,7 @@ function main(argv) {
 
 下一步:
   cd <目录>
-  npm i                                                        # 装上 @jdid/dapp-sdk
+  npm i                                                        # 装上 ${PACKAGE_NAME}
   node ${join(ROOT, "cli", "conformance.mjs")} --dapp .          # 静态自检(不需要设备)
   # 在 JDID App 的 Explore 里打开你的页面(真机联调需要 debug 包 + http,正式包只允许 https)
 `);
@@ -49,7 +54,7 @@ function main(argv) {
   const mainPath = join(dest, "main.js");
   if (existsSync(mainPath)) {
     const source = readFileSync(mainPath, "utf8");
-    writeFileSync(mainPath, source.replace(/"\.\.\/\.\.\/src\/index\.js"/g, '"@jdid/dapp-sdk"'), "utf8");
+    writeFileSync(mainPath, source.replace(/"\.\.\/\.\.\/src\/index\.js"/g, JSON.stringify(PACKAGE_NAME)), "utf8");
   }
   const packageName =
     target
@@ -62,7 +67,7 @@ function main(argv) {
       .slice(0, 64) || "jdid-dapp";
   writeFileSync(
     join(dest, "package.json"),
-    `${JSON.stringify({ name: packageName, private: true, type: "module", dependencies: { "@jdid/dapp-sdk": "^0.3.0" } }, null, 2)}\n`,
+    `${JSON.stringify({ name: packageName, private: true, type: "module", dependencies: { [PACKAGE_NAME]: PACKAGE_RANGE } }, null, 2)}\n`,
     "utf8",
   );
 

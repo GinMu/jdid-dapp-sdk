@@ -1,9 +1,9 @@
 # JDID dApp 工具链的 DSH 插件层。
 #
 # 由本包自带的 `dsh.bundle.patch` 声明;在 DSH 的 Settings → Plugins 里安装
-# `@jdid/dapp-sdk` 后自动生效(**不需要手写 profile 的 cordis.patch.yml**)。
+# `@jccdex/jdid-dapp-sdk` 后自动生效(**不需要手写 profile 的 cordis.patch.yml**)。
 #
-# 为什么用 npx:发布后包在 registry 上,`npx -y @jdid/dapp-sdk jdid-wallet-mcp`
+# 为什么用 npx:发布后包在 registry 上,`npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp`
 # 就能起 MCP server,不必写死本机的绝对路径。首次运行需要能访问 registry(或用
 # 全局安装的副本)。
 - insert:
@@ -13,4 +13,4 @@
         serverName: jdid-wallet
         transport: stdio
         command: npx
-        args: ["-y", "@jdid/dapp-sdk", "jdid-wallet-mcp"]
+        args: ["-y", "@jccdex/jdid-dapp-sdk", "jdid-wallet-mcp"]
