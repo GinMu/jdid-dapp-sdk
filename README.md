@@ -23,6 +23,30 @@ docs/architecture.md       目录/分层职责:契约 → 生成 → 消费,以�
 mcp/server.mjs             jdid-wallet-mcp:agent 驱动真机钱包的 9 个工具
 ```
 
+## 发布与起步(0.3.0 起)
+
+本包已可发布(`private` 已去掉,`files` 含 `src/contract/schema/cli/docs/mcp/examples`,版本跟契约版本对齐)。
+
+```sh
+# 1) 从模板起步(拷 examples/minimal-dapp 并改写 import 为包名)
+npx @jdid/dapp-sdk my-first-dapp
+cd my-first-dapp && npm i
+node node_modules/@jdid/dapp-sdk/cli/conformance.mjs --dapp .   # 静态自检,不需要设备
+
+# 2) 在 JDID App 里真机联调
+npx @jdid/dapp-sdk jdid-wallet-mcp    # 以 stdio 起 MCP server,交给 agent 驱动
+```
+
+三个 bin:
+
+| bin | 作用 |
+| --- | --- |
+| `create-jdid-dapp` | 生成 dApp 骨架(manifest 的 `name` 与目录名一致) |
+| `jdid-dapp-conformance` | 五项静态自检 + 可选 `--cdp` 真机 |
+| `jdid-wallet-mcp` | MCP server:让 agent 自己开 dApp/调 provider/截图 |
+
+CI(`.github/workflows/ci.yml`)在 Node 22 上跑 `npm run check`,并用 `npm pack --dry-run` 兜住 `files` 白名单。
+
 ## 快速开始
 
 ```sh

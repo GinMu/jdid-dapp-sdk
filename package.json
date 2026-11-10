@@ -1,8 +1,7 @@
 {
   "name": "@jdid/dapp-sdk",
-  "version": "0.1.0",
-  "description": "JDID dApp SDK 最小骨架:契约单一来源(contract/methods.json)→ 类型/常量生成 → conformance CLI",
-  "private": true,
+  "version": "0.3.0",
+  "description": "JDID dApp SDK:契约单一来源(contract/methods.json)→ 类型/常量生成 → conformance/校准/MCP",
   "type": "module",
   "types": "./src/index.d.ts",
   "exports": {
@@ -11,14 +10,18 @@
     "./methods": "./src/methods.js"
   },
   "bin": {
-    "jdid-dapp-conformance": "./cli/conformance.mjs"
+    "jdid-dapp-conformance": "./cli/conformance.mjs",
+    "jdid-wallet-mcp": "./mcp/server.mjs",
+    "create-jdid-dapp": "./cli/create-dapp.mjs"
   },
   "files": [
     "src",
     "contract",
     "schema",
     "cli",
-    "docs"
+    "docs",
+    "mcp",
+    "examples"
   ],
   "scripts": {
     "gen": "node scripts/gen.mjs",
@@ -26,10 +29,22 @@
     "conformance": "node cli/conformance.mjs",
     "test": "node --test \"test/*.test.mjs\"",
     "check": "npm run gen:check && npm test && npm run conformance",
-    "mcp": "node mcp/server.mjs"
+    "mcp": "node mcp/server.mjs",
+    "create": "node cli/create-dapp.mjs"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
-  "license": "UNLICENSED"
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GinMu/jdid-dapp-sdk.git"
+  },
+  "keywords": [
+    "jdid",
+    "dapp",
+    "did",
+    "eip-1193",
+    "wallet"
+  ]
 }

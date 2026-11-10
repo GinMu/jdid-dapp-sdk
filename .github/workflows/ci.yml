@@ -1,0 +1,18 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # 零依赖:不需要 npm ci,直接跑门禁(生成物一致性 + 单测 + conformance)
+      - run: npm run check
+      # 发布前的体积/文件白名单检查:files 漏目录会在这里露出
+      - run: npm pack --dry-run
