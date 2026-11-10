@@ -7,6 +7,8 @@
     "did_requestAccountName",
     "did_getBase58PublicKey",
     "ipfs_getPublicKey",
-    "ipfs_personalSign"
+    "ipfs_personalSign",
+    "did_generateDidDoc",
+    "did_resolve"
   ]
 }

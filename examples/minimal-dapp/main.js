@@ -20,12 +20,21 @@ export async function run(wallet) {
   // 3) 签一条载荷(DER 签名;会弹确认,不要在这里放真实业务载荷之外的东西)。
   const signature = await jdid.ipfsSign({ data: [104, 101, 108, 108, 111], address });
 
+  // 4) DID bridge 的两个**只读**能力(不弹确认、不写链):
+  //    先按地址拼 DID,再让钱包拼装文档并把解析结果读回来。
+  const did = `did:swtc:${address}`;
+  const didDocument = await jdid.generateDidDoc({ did, version: "1.0" });
+  const resolved = await jdid.resolveDid(did);
+
   return {
     accounts,
     name,
     base58PublicKey,
     ipfsPublicKey: await jdid.ipfsPublicKey(address),
     signature,
+    did,
+    didDocumentId: didDocument?.id ?? null,
+    resolved,
     // 让作者一眼看到"这个 dApp 会向用户要哪些权限"。
     promptSurface: jdid.permissions().filter((p) => p.needs.includes("secret") || p.needs.includes("confirm")),
   };

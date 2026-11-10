@@ -11,7 +11,10 @@ test("示例 dApp 全过", () => {
   const result = runCli("examples/minimal-dapp");
   assert.equal(result.status, 0, result.stdout + result.stderr);
   assert.match(result.stdout, /全部通过/);
-  assert.match(result.stdout, /实际调用\(5\):swtc_requestAccounts, did_requestAccountName, did_getBase58PublicKey, ipfs_personalSign, ipfs_getPublicKey/);
+  assert.match(
+    result.stdout,
+    /实际调用\(7\):swtc_requestAccounts, did_requestAccountName, did_getBase58PublicKey, ipfs_personalSign, did_generateDidDoc, did_resolve, ipfs_getPublicKey/,
+  );
   assert.match(result.stdout, /用户授权\/确认面:secret/);
 });
 
@@ -35,6 +38,8 @@ test("--json 输出可被机器消费", () => {
     "did_getBase58PublicKey",
     "ipfs_getPublicKey",
     "ipfs_personalSign",
+    "did_generateDidDoc",
+    "did_resolve",
   ]);
   assert.deepEqual(report.promptSurface, ["secret"]);
   assert.deepEqual(

@@ -13,6 +13,7 @@
  */
 import { listTargets, evaluate, forwardDevtools, pickDevice, pickPageTarget, waitForPid } from "./cdp.mjs";
 import { loadContract } from "../scripts/gen.mjs";
+import { paramsFor } from "./calibrate-params.mjs";
 
 const args = process.argv.slice(2);
 const argValue = (flag, fallback) => {
@@ -36,31 +37,15 @@ const MONEY_METHODS = new Set([
 ]);
 
 /**
- * 默认只跑契约里的方法(`contract/methods.json`,当前 7 条全 verified),**动钱方法永不在默认列表里**。
+ * 默认只跑契约里的方法(`contract/methods.json`,当前 13 条),**动钱方法永不在默认列表里**。
  * 校准的意义:把"文档里说的"变成"这一次真机上的"。
  */
 const SAFE = loadContract().methods.map((m) => m.name).filter((name) => !MONEY_METHODS.has(name));
 const DANGEROUS = [...MONEY_METHODS, "wallet_switchEthereumChain"];
 
 function callExpression(method) {
-  // 参数尽量给"无害的占位";签名类方法由钱包自己弹确认,用户在设备上点。
-  // 需要地址的方法:统一用 --address 传真实地址(授权后用 eth_accounts 拿到的那个)。
-  const needsAddress = new Set([
-    "swtc_getPublicKey",
-    "did_requestAccountName",
-    "did_getBase58PublicKey",
-    "ipfs_getPublicKey",
-    "eth_getEncryptionPublicKey",
-  ]);
-  const paramsByMethod = {
-    personal_sign: ["0x68656c6c6f", address],
-    swtc_signMessage: [address, "hello"],
-    personal_ecRecover: ["0x00", address],
-    did_issueCredential: [{ keyDoc: { address } }],
-    ipfs_personalSign: [[1, 2, 3], address],
-    eth_decrypt: ["0x00", address],
-  };
-  const params = paramsByMethod[method] ?? (needsAddress.has(method) ? [address] : []);
+  // 参数表见 calibrate-params.mjs(单独成模块,便于单测);需要地址的方法用 --address。
+  const params = paramsFor(method, address);
   return `(async () => {
     try {
       const value = await window.ethereum.request({ method: ${JSON.stringify(method)}, params: ${JSON.stringify(params)} });
