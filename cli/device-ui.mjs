@@ -5,6 +5,7 @@
  * 足够用;真正的导航逻辑仍放在 conformance 里,找不到元素时给明确报错而不是瞎点。
  */
 import { spawnSync } from "node:child_process";
+import { adbPath } from "./cdp.mjs";
 
 /** 把 uiautomator dump 的 XML 解析成节点数组(text / desc / cls / bounds)。 */
 export function parseUiNodes(xml) {
@@ -72,7 +73,7 @@ export function boundsCenter(bounds) {
   return { x: Math.round((x1 + x2) / 2), y: Math.round((y1 + y2) / 2) };
 }
 
-const run = (device, args) => spawnSync("adb", ["-s", device, ...args], { encoding: "utf8" });
+const run = (device, args) => spawnSync(adbPath(), ["-s", device, ...args], { encoding: "utf8" });
 const adbShell = run;
 
 /** 抓一次 UI 层级并解析。 */

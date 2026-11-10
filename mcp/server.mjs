@@ -15,6 +15,7 @@ import { writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  adbPath,
   evaluate,
   forwardDevtools,
   listDevices,
@@ -30,7 +31,7 @@ import { loadContract } from "../scripts/gen.mjs";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEVTOOLS_PORT = 9222;
 
-const sh = (device, args) => spawnSync("adb", ["-s", device, ...args], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
+const sh = (device, args) => spawnSync(adbPath(), ["-s", device, ...args], { encoding: "utf8", maxBuffer: 32 * 1024 * 1024 });
 
 /** 连上当前 dApp 页面(只认 http(s) 页面,内部桥页没有 provider),返回 { device, page }。 */
 async function attach({ device: wanted, packageName = "com.android.jdid", urlHint } = {}) {
@@ -213,7 +214,7 @@ const TOOLS = [
     async run({ path, device }) {
       const serial = pickDevice(device);
       const target = resolve(path ?? `/tmp/jdid-${Date.now()}.png`);
-      const png = spawnSync("adb", ["-s", serial, "exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 * 1024 * 1024 });
+      const png = spawnSync(adbPath(), ["-s", serial, "exec-out", "screencap", "-p"], { encoding: "buffer", maxBuffer: 64 * 1024 * 1024 });
       if (png.status !== 0) return `截屏失败:${png.stderr?.toString() ?? ""}`;
       writeFileSync(target, png.stdout);
       return target;

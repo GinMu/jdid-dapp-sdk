@@ -96,3 +96,28 @@ test("conformance --cdp:没有可用设备时降级为跳过(exit 0),--require-c
   assert.equal(required.status, 1, "require-cdp 时缺设备必须失败");
   assert.match(required.stdout, /✗ cdp/);
 });
+
+test("adbPath 不依赖 PATH:能按 SDK 常见位置兜底", async () => {
+  const { adbPath } = await import("../cli/cdp.mjs");
+  const { existsSync } = await import("node:fs");
+  const resolved = adbPath();
+  // 机器上装了 SDK 就必须解析到真实文件;没装才回退成裸 "adb"
+  if (resolved !== "adb") assert.ok(existsSync(resolved), `解析出的 adb 不存在:${resolved}`);
+});
+
+test("adbPath 优先用 ANDROID_HOME", async () => {
+  const { adbPath } = await import("../cli/cdp.mjs");
+  const previous = process.env.ANDROID_HOME;
+  const { existsSync } = await import("node:fs");
+  const { join } = await import("node:path");
+  const { homedir } = await import("node:os");
+  const real = join(homedir(), "Library", "Android", "sdk");
+  if (!existsSync(real)) return; // 没装 SDK 的机器跳过
+  process.env.ANDROID_HOME = real;
+  try {
+    assert.equal(adbPath(), join(real, "platform-tools", "adb"));
+  } finally {
+    if (previous === undefined) delete process.env.ANDROID_HOME;
+    else process.env.ANDROID_HOME = previous;
+  }
+});

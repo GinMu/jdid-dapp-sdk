@@ -15,6 +15,9 @@
  * (或后续用 `--auto-open` 接 UI 自动化)。
  */
 import { spawnSync } from "node:child_process";
+import { existsSync } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 import { createReadStream, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, normalize, resolve, sep } from "node:path";
@@ -40,12 +43,42 @@ const CONTENT_TYPES = {
 };
 
 export function hasAdb() {
-  const result = spawnSync("adb", ["version"], { encoding: "utf8" });
+  const result = spawnSync(adbPath(), ["version"], { encoding: "utf8" });
   return result.status === 0;
 }
 
+/**
+ * adb 的可执行文件路径。
+ *
+ * 直接 `spawnSync("adb")` 依赖 PATH,而 PATH 往往只在你自己的 shell 里配过 ——
+ * MCP server 是宿主(DSH/Claude Desktop)spawn 的子进程,继承的是宿主的 PATH,
+ * 于是"设备明明连着却报没有设备"。这里按 ANDROID_HOME / ANDROID_SDK_ROOT /
+ * 常见安装位置依次兜底,都找不到才回退到裸 `adb`(让原来的报错照旧出现)。
+ */
+export function adbPath() {
+  const candidates = [];
+  for (const key of ["ANDROID_HOME", "ANDROID_SDK_ROOT"]) {
+    const home = process.env[key];
+    if (home) candidates.push(join(home, "platform-tools", "adb"));
+  }
+  candidates.push(
+    join(homedir(), "Library", "Android", "sdk", "platform-tools", "adb"),
+    join(homedir(), "Android", "Sdk", "platform-tools", "adb"),
+    "/usr/local/bin/adb",
+    "/opt/homebrew/bin/adb",
+  );
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(candidate)) return candidate;
+    } catch {
+      // 忽略不可读的候选路径
+    }
+  }
+  return "adb";
+}
+
 export function listDevices() {
-  const result = spawnSync("adb", ["devices"], { encoding: "utf8" });
+  const result = spawnSync(adbPath(), ["devices"], { encoding: "utf8" });
   if (result.status !== 0) return [];
   return result.stdout
     .split("\n")
@@ -71,7 +104,7 @@ export function pickDevice(preferred) {
 }
 
 export function adb(device, args) {
-  const result = spawnSync("adb", ["-s", device, ...args], { encoding: "utf8" });
+  const result = spawnSync(adbPath(), ["-s", device, ...args], { encoding: "utf8" });
   if (result.status !== 0) {
     throw new CdpError(`adb ${args.join(" ")} 失败:${(result.stderr || result.stdout).trim()}`, { code: "adb_failed" });
   }
@@ -82,7 +115,7 @@ export function adb(device, args) {
 export function forwardPort(device, port) {
   adb(device, ["reverse", `tcp:${port}`, `tcp:${port}`]);
   return () => {
-    spawnSync("adb", ["-s", device, "reverse", "--remove", `tcp:${port}`], { encoding: "utf8" });
+    spawnSync(adbPath(), ["-s", device, "reverse", "--remove", `tcp:${port}`], { encoding: "utf8" });
   };
 }
 
@@ -109,14 +142,14 @@ export async function waitForPid(device, packageName, { timeoutMs = 60_000, inte
 /** 把设备的 WebView 调试 socket 转发到本机端口;返回取消函数。 */
 export function forwardDevtools(device, pid, localPort = 9222) {
   const socketName = `webview_devtools_remote_${pid}`;
-  const result = spawnSync("adb", ["-s", device, "forward", `tcp:${localPort}`, `localabstract:${socketName}`], {
+  const result = spawnSync(adbPath(), ["-s", device, "forward", `tcp:${localPort}`, `localabstract:${socketName}`], {
     encoding: "utf8",
   });
   if (result.status !== 0) {
     throw new CdpError(`adb forward 失败:${(result.stderr || result.stdout).trim()}`, { code: "adb_failed" });
   }
   return () => {
-    spawnSync("adb", ["-s", device, "forward", "--remove", `tcp:${localPort}`], { encoding: "utf8" });
+    spawnSync(adbPath(), ["-s", device, "forward", "--remove", `tcp:${localPort}`], { encoding: "utf8" });
   };
 }
 
