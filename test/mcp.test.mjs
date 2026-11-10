@@ -49,6 +49,68 @@ test("initialize 返回 serverInfo 与 tools 能力", async () => {
   }
 });
 
+test("tools/list 暴露 3 个 DID 工具,且读写分界写清楚", async () => {
+  const { call, stop } = startServer();
+  try {
+    const response = await call("tools/list", {});
+    const tools = response.result.tools;
+    const names = tools.map((t) => t.name);
+    for (const name of ["jdid_did_inspect", "jdid_did_verify", "jdid_did_publish"]) {
+      assert.ok(names.includes(name), `缺工具 ${name}`);
+    }
+    const inspect = tools.find((t) => t.name === "jdid_did_inspect");
+    const publish = tools.find((t) => t.name === "jdid_did_publish");
+    assert.match(inspect.description, /只读/);
+    assert.match(publish.description, /默认关闭/);
+    assert.equal(publish.inputSchema.properties.allowWrite.default, false);
+  } finally {
+    stop();
+  }
+});
+
+test("jdid_did_publish 没有 allowWrite 时被拦下,且不碰设备", async () => {
+  const { call, stop } = startServer();
+  try {
+    const response = await call("tools/call", {
+      name: "jdid_did_publish",
+      arguments: { address: "jwWmuiTest", did: "did:swtc:jwWmuiTest", didDocument: "{}" },
+    });
+    const payload = JSON.parse(response.result.content[0].text);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.state, "blocked");
+    assert.equal(payload.method, "did_publish");
+    assert.match(payload.hint, /allowWrite=true/);
+  } finally {
+    stop();
+  }
+});
+
+test("jdid_did_publish 带 generateVC 时指向 did_generateVC,同样默认拦下", async () => {
+  const { call, stop } = startServer();
+  try {
+    const response = await call("tools/call", {
+      name: "jdid_did_publish",
+      arguments: { address: "jwWmuiTest", generateVC: { types: ["VerifiableCredential"] } },
+    });
+    const payload = JSON.parse(response.result.content[0].text);
+    assert.equal(payload.state, "blocked");
+    assert.equal(payload.method, "did_generateVC");
+  } finally {
+    stop();
+  }
+});
+
+test("jdid_did_inspect 缺 did/address 时给出可执行的报错", async () => {
+  const { call, stop } = startServer();
+  try {
+    const response = await call("tools/call", { name: "jdid_did_inspect", arguments: {} });
+    const text = response.result?.content?.[0]?.text ?? JSON.stringify(response);
+    assert.match(text, /需要 did 或 address/);
+  } finally {
+    stop();
+  }
+});
+
 test("tools/list 暴露驱动钱包所需的工具", async () => {
   const { call, stop } = startServer();
   try {

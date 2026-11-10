@@ -36,6 +36,9 @@ node mcp/server.mjs          # 或 npm run mcp
 | `jdid_type` | 向焦点输入文本 | `text`(必填)、`device` |
 | `jdid_logcat` | 读最近日志(可过滤) | `grep`、`lines`、`device` |
 | `jdid_screenshot` | 截屏到宿主文件 | `path`、`device` |
+| `jdid_did_inspect` | 只读检查 DID:`did_resolve` + `did_stat`,可选 `did_generateDidDoc`;**不弹确认、不写链** | `did` 或 `address`、`includeDocument`、`device`、`url` |
+| `jdid_did_verify` | 只读验证凭证(`did_verifyCredential`),返回 `{ verified, unknown, results }` | `credential`(必填)、`device`、`url` |
+| `jdid_did_publish` | 写操作**默认关闭**:发布 DID 文档(`did_publish`)或生成 VC(`did_generateVC`);必须显式 `allowWrite=true`,执行时钱包弹宿主确认 | `address`(必填)、`did` / `didDocument` 或 `generateVC`、`allowWrite`、`device`、`url` |
 | `jdid_conformance` | 对一个 dApp 目录跑 conformance | `dappDir`(必填) |
 
 ## 前置条件
@@ -43,6 +46,16 @@ node mcp/server.mjs          # 或 npm run mcp
 1. `adb devices` 里有设备(模拟器或真机);
 2. 装的是 **debug** 包(WebView 调试只对 `debuggable` 应用默认开启,release 没有这个能力);
 3. 钱包已**解锁**并进过 Explore —— 装包会杀掉进程,重新解锁后 `jdid_open_dapp` 才能打开页面。
+
+### 写操作闸门
+
+`jdid_did_publish` 在没有 `allowWrite=true` 时**不碰设备**,直接返回:
+
+```json
+{ "ok": false, "state": "blocked", "method": "did_publish", "hint": "…带 allowWrite=true 重新调用…" }
+```
+
+这样 agent 不会因为"想查点东西"顺手写链或卡在宿主确认弹窗上;真要写时,钱包仍会按 origin 弹一次确认。
 
 ## 已知限制(都是真机踩出来的)
 

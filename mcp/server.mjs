@@ -24,6 +24,8 @@ import {
   waitForPid,
 } from "../cli/cdp.mjs";
 import { dumpUi, findByText, openDappInWallet, typeText } from "../cli/device-ui.mjs";
+import { didFor } from "../cli/calibrate-params.mjs";
+import { loadContract } from "../scripts/gen.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const DEVTOOLS_PORT = 9222;
@@ -50,6 +52,40 @@ async function attach({ device: wanted, packageName = "com.android.jdid", urlHin
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error("没有可用的 dApp 页面:先用 jdid_open_dapp 打开一个地址(内部桥页 file:///android_asset/unified-bridge.html 不算)");
+}
+
+const CONTRACT = loadContract();
+const CONTRACT_METHODS = new Set(CONTRACT.methods.map((m) => m.name));
+
+/**
+ * 工具里用到的方法名一律从契约取,契约里没有就直接报错 ——
+ * 这样工具不会和契约漂移(加/删方法时这里会自动跟上或大声失败)。
+ */
+function requireMethod(name) {
+  if (!CONTRACT_METHODS.has(name)) {
+    throw new Error(`契约(contract ${CONTRACT.contractVersion})里没有 ${name};先更新 contract/methods.json 再跑 npm run gen`);
+  }
+  return name;
+}
+
+/** 在页面里调 provider,把"成功/失败"都变成结构化结果(不让异常冒成 MCP 错误)。 */
+async function callProvider(page, method, params, { timeoutMs = 30_000 } = {}) {
+  const expression = `(async () => {
+    try {
+      const value = await window.ethereum.request({ method: ${JSON.stringify(method)}, params: ${JSON.stringify(params)} });
+      return { ok: true, value };
+    } catch (error) {
+      return { ok: false, error: String(error?.message ?? error), code: error?.code ?? null };
+    }
+  })()`;
+  return evaluate(page, expression, { timeoutMs });
+}
+
+/** 把 did/address 归一成 DID:带 did 直接用,否则按地址形状推导。 */
+function targetDid({ did, address }) {
+  if (did) return did;
+  if (address) return didFor(address);
+  throw new Error("需要 did 或 address");
 }
 
 const TOOLS = [
@@ -181,6 +217,87 @@ const TOOLS = [
       if (png.status !== 0) return `截屏失败:${png.stderr?.toString() ?? ""}`;
       writeFileSync(target, png.stdout);
       return target;
+    },
+  },
+  {
+    name: "jdid_did_inspect",
+    description:
+      "只读检查一个 DID:did_resolve + did_stat,可选 did_generateDidDoc。不会弹确认、不写链。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        did: { type: "string", description: "完整 DID,例如 did:swtc:jw…" },
+        address: { type: "string", description: "没给 did 时按地址推导:0x… → did:ethr:,其它 → did:swtc:" },
+        includeDocument: { type: "boolean", default: false, description: "同时用 did_generateDidDoc 拼装文档" },
+        device: { type: "string" },
+        url: { type: "string", description: "可选:只匹配包含该片段的页面" },
+      },
+    },
+    async run({ did, address, includeDocument, device, url }) {
+      const target = targetDid({ did, address });
+      const { page } = await attach({ device, urlHint: url });
+      const resolved = await callProvider(page, requireMethod("did_resolve"), [target]);
+      const stat = await callProvider(page, requireMethod("did_stat"), [target]);
+      const generated = includeDocument
+        ? await callProvider(page, requireMethod("did_generateDidDoc"), [{ did: target, version: "1.0" }])
+        : null;
+      return JSON.stringify({ did: target, resolved, stat, generated }, null, 2);
+    },
+  },
+  {
+    name: "jdid_did_verify",
+    description: "只读验证凭证(did_verifyCredential),返回 { ok, value: { verified, unknown, results } }。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        credential: { type: "string", description: "凭证 JSON 字符串" },
+        device: { type: "string" },
+        url: { type: "string" },
+      },
+      required: ["credential"],
+    },
+    async run({ credential, device, url }) {
+      const { page } = await attach({ device, urlHint: url });
+      const result = await callProvider(page, requireMethod("did_verifyCredential"), [credential]);
+      return JSON.stringify(result, null, 2);
+    },
+  },
+  {
+    name: "jdid_did_publish",
+    description:
+      "写操作,默认关闭:发布 DID 文档(did_publish)或生成 VC(did_generateVC)。必须显式 allowWrite=true,执行时钱包会弹宿主确认。",
+    inputSchema: {
+      type: "object",
+      properties: {
+        address: { type: "string", description: "钱包按它取私钥(页面不传 privateKey)" },
+        did: { type: "string", description: "did_publish 用" },
+        didDocument: { type: "string", description: "did_publish 用;对象会被序列化" },
+        generateVC: { type: "object", description: "给了它就走 did_generateVC(generateVC 载荷,address 会并入)" },
+        allowWrite: { type: "boolean", default: false, description: "必须显式为 true 才会真正调用" },
+        device: { type: "string" },
+        url: { type: "string" },
+      },
+      required: ["address"],
+    },
+    async run({ address, did, didDocument, generateVC, allowWrite, device, url }) {
+      const method = generateVC ? requireMethod("did_generateVC") : requireMethod("did_publish");
+      if (!allowWrite) {
+        // 未授权时不碰设备:直接返回可执行提示,避免 agent 误写链/卡在确认弹窗。
+        return JSON.stringify(
+          {
+            ok: false,
+            state: "blocked",
+            method,
+            hint: "写操作(发布 DID / 签发 VC)默认关闭。确认要写链/签发后,带 allowWrite=true 重新调用;执行时钱包会弹宿主确认,可能需要用户在设备上点。",
+          },
+          null,
+          2,
+        );
+      }
+      const { page } = await attach({ device, urlHint: url });
+      const payload = generateVC ? { ...generateVC, address } : { did, didDocument, address };
+      const result = await callProvider(page, method, [payload], { timeoutMs: 120_000 });
+      return JSON.stringify({ method, result }, null, 2);
     },
   },
   {
