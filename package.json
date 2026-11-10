@@ -21,7 +21,8 @@
     "cli",
     "docs",
     "mcp",
-    "examples"
+    "examples",
+    "dsh"
   ],
   "scripts": {
     "gen": "node scripts/gen.mjs",
@@ -46,5 +47,10 @@
     "did",
     "eip-1193",
     "wallet"
-  ]
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./dsh/cordis.patch.yml"
+    }
+  }
 }

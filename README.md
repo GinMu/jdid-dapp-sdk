@@ -23,6 +23,25 @@ docs/architecture.md       目录/分层职责:契约 → 生成 → 消费,以�
 mcp/server.mjs             jdid-wallet-mcp:agent 驱动真机钱包的 9 个工具
 ```
 
+## 在 DeepSeek Harness 里安装(插件页,无需手写配置)
+
+本包同时是一个 **DSH bundle**:`package.json` 的 `dsh.bundle.patch` 指向
+[`dsh/cordis.patch.yml`](dsh/cordis.patch.yml),里面用 `insert` 注册 `mcp-jdid-wallet`
+(`npx -y @jdid/dapp-sdk jdid-wallet-mcp`)。所以发布后:
+
+1. 打开 DSH 的 **Settings → Plugins**,安装 `@jdid/dapp-sdk`;
+2. 重启 `dsh web`;
+3. 新会话里就多了 12 个 `mcp__jdid-wallet__*` 工具(设备/开页/探针/DID/自检)。
+
+等价 CLI:
+
+```sh
+dsh plugin --profile web add @jdid/dapp-sdk
+```
+
+发布前想本地试:同一份补丁把 `command/args` 换成 `node /abs/path/mcp/server.mjs` 即可
+(见 README 上面的注册示例)——`npx` 那一行依赖 registry 上的包。
+
 ## 发布与起步(0.3.0 起)
 
 本包已可发布(`private` 已去掉,`files` 含 `src/contract/schema/cli/docs/mcp/examples`,版本跟契约版本对齐)。
