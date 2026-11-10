@@ -1,6 +1,6 @@
 {
-  "name": "@jdid/dapp-sdk",
-  "version": "0.3.0",
+  "name": "@jccdex/jdid-dapp-sdk",
+  "version": "0.0.1",
   "description": "JDID dApp SDK:契约单一来源(contract/methods.json)→ 类型/常量生成 → conformance/校准/MCP",
   "type": "module",
   "types": "./src/index.d.ts",
@@ -10,9 +10,9 @@
     "./methods": "./src/methods.js"
   },
   "bin": {
-    "jdid-dapp-conformance": "./cli/conformance.mjs",
-    "jdid-wallet-mcp": "./mcp/server.mjs",
-    "create-jdid-dapp": "./cli/create-dapp.mjs"
+    "jdid-dapp-conformance": "cli/conformance.mjs",
+    "jdid-wallet-mcp": "mcp/server.mjs",
+    "create-jdid-dapp": "cli/create-dapp.mjs"
   },
   "files": [
     "src",
@@ -36,10 +36,10 @@
   "engines": {
     "node": ">=22"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/GinMu/jdid-dapp-sdk.git"
+    "url": "git+https://github.com/GinMu/jdid-dapp-sdk.git"
   },
   "keywords": [
     "jdid",
