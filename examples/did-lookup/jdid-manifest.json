@@ -1,0 +1,6 @@
+{
+  "name": "jdid-did-lookup",
+  "version": "0.1.0",
+  "entry": "main.js",
+  "methods": ["swtc_requestAccounts", "did_generateDidDoc", "did_resolve", "did_stat"]
+}

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>JDID 示例:查一个 DID</title>
+    <style>
+      body { font: 14px/1.6 -apple-system, "PingFang SC", sans-serif; margin: 24px; color: #1b1b1f; }
+      pre { background: #f4f4f6; padding: 12px; border-radius: 8px; overflow: auto; }
+      .hint { color: #666; }
+      input { width: 100%; max-width: 480px; padding: 8px; border: 1px solid #d0d0d6; border-radius: 8px; }
+      button { margin-top: 8px; padding: 8px 16px; border: 0; border-radius: 8px; background: #2b5cff; color: #fff; }
+    </style>
+  </head>
+  <body>
+    <h1>JDID 示例:查一个 DID</h1>
+    <p class="hint">
+      只读示例:拼装文档、解析链上文档、读统计,全程不弹确认、不写链。必须从 JDID App 的
+      Explore/DApp 页打开(依赖注入的 <code>window.ethereum</code>)。
+    </p>
+    <input id="did" placeholder="did:swtc:…(留空则用当前账户)" />
+    <button id="go">查询</button>
+    <pre id="out">运行中…</pre>
+    <script type="module">
+      import { run } from "./main.js";
+
+      const out = document.getElementById("out");
+      const input = document.getElementById("did");
+      async function go() {
+        out.textContent = "查询中…";
+        try {
+          const result = await run(window.ethereum, { did: input.value.trim() || undefined });
+          out.textContent = JSON.stringify(result, null, 2);
+        } catch (error) {
+          out.textContent = `${error.code ?? "error"}: ${error.message}`;
+        }
+      }
+      document.getElementById("go").addEventListener("click", go);
+      await go();
+    </script>
+  </body>
+</html>
