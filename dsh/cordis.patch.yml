@@ -3,9 +3,14 @@
 # 由本包自带的 `dsh.bundle.patch` 声明;在 DSH 的 Settings → Plugins 里安装
 # `@jccdex/jdid-dapp-sdk` 后自动生效(**不需要手写 profile 的 cordis.patch.yml**)。
 #
-# 为什么用 npx:发布后包在 registry 上,`npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp`
-# 就能起 MCP server,不必写死本机的绝对路径。首次运行需要能访问 registry(或用
-# 全局安装的副本)。
+# 为什么用 npx:发布后包在 registry 上,装一次就能起 MCP server,不必写死本机绝对路径。
+# 首次运行需要能访问 registry(或用全局安装的副本)。
+#
+# 必须带 `-p`:npm exec 只从包里挑"默认 bin"(唯一 bin,或与包名同名的 bin)。本包有
+# 3 个不同 bin,且没有与包名同名的 bin;不带 -p 时 `npx -y <包名> jdid-wallet-mcp`
+# 会把第二个位置参数当成参数、同时在选默认 bin 时抛
+# "could not determine executable to run"。`-p` 把包作为 --package 传入后,
+# 第二个位置参数才会被解析成要执行的 bin。
 - insert:
     - id: mcp-jdid-wallet
       name: "@deepseek-ai/dsh-mcp-client"
@@ -13,4 +18,4 @@
         serverName: jdid-wallet
         transport: stdio
         command: npx
-        args: ["-y", "@jccdex/jdid-dapp-sdk", "jdid-wallet-mcp"]
+        args: ["-y", "-p", "@jccdex/jdid-dapp-sdk", "jdid-wallet-mcp"]

@@ -72,4 +72,4 @@ node cli/conformance.mjs      # 4) 五项检查
 
 - **运行时不在本仓**:`window.ethereum` / `window.ccdao` 由 JDID 钱包(另一个仓)注入;本仓只做"调用前的闸门 + 调用后的归一化"。
 - **契约是"作者可依赖的面",不是"钱包只实现这些"**:钱包还实现了 `eth_chainId`、`swtc_signMessage` 等,但不在 13 条契约内,客户端会在发出前拒绝。`mcp` 的 `jdid_probe` 属于**钱包诊断**,可用契约外方法(已在 `mcp/README.md` 注明)。
-- **发布白名单**:`package.json` 的 `files`(`src`/`contract`/`schema`/`cli`/`docs`)决定 npm 包包含什么;`mcp/` 目前**不在里面**(发布前需补)。
+- **发布白名单**:`package.json` 的 `files`(`src`/`scripts`/`contract`/`schema`/`cli`/`docs`/`mcp`/`examples`/`dsh`)决定 npm 包包含什么。`mcp/server.mjs` 与 `cli/conformance.mjs` 运行时会 `import ../scripts/gen.mjs`，所以 `scripts/` 必须发布(由 `test/publish-completeness.test.mjs` 守卫)。

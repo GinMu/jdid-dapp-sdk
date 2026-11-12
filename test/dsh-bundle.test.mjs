@@ -20,12 +20,30 @@ test("bundle 补丁用 insert 注册 mcp-jdid-wallet,并走已发布的包名", 
   assert.match(text, /name: "@deepseek-ai\/dsh-mcp-client"/);
   assert.match(text, /serverName: jdid-wallet/);
   assert.match(text, /transport: stdio/);
-  // 发布后直接按包名起 bin,不写死本机绝对路径
+  // 发布后用 npx 起 bin,不写死本机绝对路径;必须带 -p(理由见下一条测试)
   assert.match(text, /command: npx/);
   assert.ok(
-    text.includes(`args: ["-y", "${pkg.name}", "jdid-wallet-mcp"]`),
-    `补丁里的 npx 参数必须与 package.json 的 name 一致(${pkg.name})`,
+    text.includes(`args: ["-y", "-p", "${pkg.name}", "jdid-wallet-mcp"]`),
+    `补丁里的 npx 参数必须与 package.json 的 name 一致且带 -p(${pkg.name})`,
   );
+});
+
+test("没有默认 bin 的包必须用 npx -p(否则 npm exec 选不中 bin)", () => {
+  // 复刻 npm 的默认 bin 规则:唯一 bin,或与包名(去 scope)同名的 bin 才算默认。
+  // 本包有 3 个不同 bin 且没有 jdid-dapp-sdk,所以 `npx -y <包名> <命令>` 会在
+  // 选默认 bin 时抛 "could not determine executable to run"。
+  const bins = Object.values(pkg.bin ?? {});
+  const unscoped = pkg.name.replace(/^@[^/]+\//, "");
+  const hasDefaultBin = new Set(bins).size === 1 || Boolean(pkg.bin?.[unscoped]);
+
+  const text = readFileSync(resolve(ROOT, pkg.dsh.bundle.patch), "utf8");
+  if (!hasDefaultBin) {
+    assert.match(
+      text,
+      /args: \[[^\]]*"-p"/,
+      "本包没有默认 bin:npx 参数必须带 -p,把包名交给 --package",
+    );
+  }
 });
 
 test("dsh/ 在发布白名单里,bin 里有 jdid-wallet-mcp", () => {

@@ -1,6 +1,6 @@
 {
   "name": "@jccdex/jdid-dapp-sdk",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "JDID dApp SDK:契约单一来源(contract/methods.json)→ 类型/常量生成 → conformance/校准/MCP",
   "type": "module",
   "types": "./src/index.d.ts",
@@ -16,6 +16,7 @@
   },
   "files": [
     "src",
+    "scripts",
     "contract",
     "schema",
     "cli",

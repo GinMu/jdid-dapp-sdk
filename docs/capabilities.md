@@ -2,7 +2,7 @@
 
 <!-- AUTO-GENERATED from contract/methods.json by scripts/gen.mjs — 不要手改。 -->
 
-契约版本 **0.0.1** · 方法 **13** 个:
+契约版本 **0.0.2** · 方法 **13** 个:
 verified 13 · partial 0 · stub 0 · unknown 0
 
 > `status` 含义见 `contract/methods.json` 的 `statusCatalog`;`needs` 里的 `confirm`/`secret`

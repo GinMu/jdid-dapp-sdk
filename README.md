@@ -7,7 +7,7 @@
 > 本包不改运行时、不签名、不持有私钥;`secret` / `confirm` 类调用永远由钱包自己弹解锁与确认。
 
 - 零依赖,只用 Node 内置模块;Node **>= 22**(仅 CLI 与测试需要,浏览器侧无 Node 依赖)
-- 包版本与契约版本保持一致(当前均为 `0.0.1`),`npm run gen:check` 会守这一条
+- 包版本与契约版本保持一致(当前均为 `0.0.2`),`npm run gen:check` 会守这一条
 
 ---
 
@@ -46,7 +46,7 @@ dsh plugin --profile web add @jccdex/jdid-dapp-sdk   # 等价于 Settings → Pl
 - 或脱离 DSH 直接自测 stdio(打印 `serverInfo` 后按 Ctrl-C):
 
 ```sh
-npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp
+npx -y -p @jccdex/jdid-dapp-sdk jdid-wallet-mcp
 ```
 
 #### 2. 在 Web 聊天里用文字使用
@@ -186,7 +186,7 @@ npx jdid-dapp-conformance --dapp . --json   # 机器可读
 不装插件也能直接起这个 MCP server(stdio):
 
 ```sh
-npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp
+npx -y -p @jccdex/jdid-dapp-sdk jdid-wallet-mcp
 ```
 
 ---

@@ -1,7 +1,7 @@
 // AUTO-GENERATED from contract/methods.json by scripts/gen.mjs — 不要手改。
 // 改动流程:改 contract/methods.json → npm run gen → 把三份生成物一起提交。
 
-export const CONTRACT_VERSION = "0.0.1";
+export const CONTRACT_VERSION = "0.0.2";
 
 export const NEEDS = Object.freeze({
   ACCOUNT: "account",
