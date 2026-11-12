@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadContract, validateContract } from "../scripts/gen.mjs";
+import { loadContract, loadPackageVersion, validateContract, validatePackageVersion } from "../scripts/gen.mjs";
 import { METHOD_INDEX, METHOD_NAMES, WALLET, NEEDS, isKnownMethod, methodsRequiring } from "../src/methods.js";
 
 const contract = loadContract();
@@ -30,6 +30,12 @@ test("契约合法(validateContract 无问题)", () => {
   assert.deepEqual(validateContract(contract), []);
 });
 
+test("package.json 版本与契约版本一致(作者看 CONTRACT_VERSION 判断方法面)", () => {
+  const version = loadPackageVersion();
+  assert.deepEqual(validatePackageVersion(contract, version), []);
+  assert.equal(version, contract.contractVersion);
+});
+
 test("方法集合就是作者可依赖的 13 条", () => {
   assert.deepEqual([...METHOD_NAMES].sort(), [...EXPECTED_METHODS].sort());
 });
@@ -55,19 +61,43 @@ test("不变量:needs 含 confirm 的方法一定也含 secret", () => {
   for (const m of confirm) assert.ok(m.needs.includes(NEEDS.SECRET), `${m.name} 缺 secret`);
 });
 
-test("13 条都带说明;核心 7 条 verified,DID bridge 6 条待实测(partial)", () => {
+/**
+ * 2026-11-12 起:DID bridge 6 条也在真机(emulator-5554)跑通成功路径,
+ * 契约内 13 条全部 verified —— 不再是"待实测"。证据(实测日期)写在 note 里:
+ * 状态一旦回退成 partial,下面的 note 守卫会一起红。
+ */
+test("13 条都带说明且全部 verified(含 DID bridge 6 条)", () => {
   assert.equal(contract.methods.length, 13);
   for (const m of contract.methods) {
     assert.ok(m.note && m.note.length > 0, `${m.name} 缺说明(note)`);
+    assert.equal(m.status, "verified", `${m.name} 应为 verified`);
   }
-  const core = contract.methods.slice(0, 7);
-  for (const m of core) assert.equal(m.status, "verified", `${m.name} 应为 verified`);
-  const bridge = contract.methods.slice(7);
-  assert.equal(bridge.length, 6);
-  const verified = bridge.filter((m) => m.status === "verified").map((m) => m.name).sort();
-  assert.deepEqual(verified, ["did_generateDidDoc", "did_resolve", "did_verifyCredential"].sort());
-  const pending = bridge.filter((m) => m.status === "partial").map((m) => m.name).sort();
-  assert.deepEqual(pending, ["did_generateVC", "did_publish", "did_stat"].sort());
+  const bridge = contract.methods.slice(7).map((m) => m.name).sort();
+  assert.deepEqual(bridge, [
+    "did_publish",
+    "did_resolve",
+    "did_stat",
+    "did_generateVC",
+    "did_verifyCredential",
+    "did_generateDidDoc",
+  ].sort());
+});
+
+/**
+ * note 只留一句职责说明(作者读文档用的),实测证据统一留在 $comment ——
+ * 状态还是 verified,就必须能从契约里找到"哪一天、在什么设备上验的"。
+ */
+test("契约 $comment 留档真机实测证据(2026-11-12,含 3 条 partial→verified)", () => {
+  assert.match(contract.$comment, /2026-11-12/, "$comment 应写明 2026-11-12 的实测");
+  for (const name of ["did_publish", "did_stat", "did_generateVC"]) {
+    assert.match(contract.$comment, new RegExp(name), `$comment 应点名 ${name}`);
+  }
+});
+
+test("note 是一句话职责说明(不塞实测长文)", () => {
+  for (const m of contract.methods) {
+    assert.ok(m.note.length <= 60, `${m.name} 的 note 应保持一句话,当前 ${m.note.length} 字:${m.note}`);
+  }
 });
 
 test("动钱方法不在契约内(自检与 agent 都不该自动调用)", () => {

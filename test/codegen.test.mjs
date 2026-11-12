@@ -15,9 +15,11 @@ function sandboxCopy(t) {
     let dir;
     try {
       dir = mkdtempSync(join(base, "jdid-dapp-sdk-"));
+      // package.json 也要拷:gen.mjs 会校验 package version === contractVersion。
       for (const sub of ["contract", "scripts", "src", "docs"]) {
         cpSync(join(ROOT, sub), join(dir, sub), { recursive: true });
       }
+      cpSync(join(ROOT, "package.json"), join(dir, "package.json"));
     } catch (error) {
       if (dir) rmSync(dir, { recursive: true, force: true });
       if (["EPERM", "EACCES", "EROFS", "ENOENT"].includes(error?.code)) continue;

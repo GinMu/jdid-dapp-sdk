@@ -25,6 +25,7 @@ export interface MethodMeta {
   readonly name: MethodName;
   readonly family: MethodFamily;
   readonly returns: string;
+  readonly payload?: string;
   readonly needs: readonly MethodNeed[];
   readonly status: MethodStatus;
   readonly note?: string;

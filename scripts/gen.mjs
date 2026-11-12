@@ -17,6 +17,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const CONTRACT_PATH = join(ROOT, "contract", "methods.json");
+const PACKAGE_PATH = join(ROOT, "package.json");
 
 export const FAMILIES = Object.freeze(["eth", "swtc", "wallet", "did", "ipfs", "web3"]);
 export const STATUSES = Object.freeze(["verified", "partial", "stub", "unknown"]);
@@ -30,6 +31,22 @@ const TARGETS = {
 
 export function loadContract(path = CONTRACT_PATH) {
   return JSON.parse(readFileSync(path, "utf8"));
+}
+
+export function loadPackageVersion(path = PACKAGE_PATH) {
+  return JSON.parse(readFileSync(path, "utf8")).version;
+}
+
+/**
+ * npm 包版本必须等于契约版本 —— 作者看 `CONTRACT_VERSION` 判断能依赖哪个方法面,
+ * 两个版本号一旦分叉,`npm view version` 与运行时能力就对不上。
+ * @returns 问题列表(空数组 = 合法)
+ */
+export function validatePackageVersion(contract, packageVersion) {
+  if (packageVersion === contract.contractVersion) return [];
+  return [
+    `package.json version(${JSON.stringify(packageVersion)}) 必须与 contractVersion(${JSON.stringify(contract.contractVersion)}) 一致`,
+  ];
 }
 
 /** 返回问题列表(空数组 = 合法)。所有问题一次性报出,不 early-return。 */
@@ -80,6 +97,8 @@ export function validateContract(contract) {
     }
     need(sourceKeys.includes(m?.source), `${where}.source 必须是 sources 里的键(${sourceKeys.join("/")})`);
     if (m?.note !== undefined) need(typeof m.note === "string" && m.note.length > 0, `${where}.note 不能为空串`);
+    // payload 只用于文档(docs/capabilities.md 的「载荷」列),不进 src/methods.js 的运行时面。
+    if (m?.payload !== undefined) need(typeof m.payload === "string" && m.payload.length > 0, `${where}.payload 不能为空串`);
   }
 
   return problems;
@@ -125,6 +144,7 @@ function renderMethods(contract) {
     out.push(`    name: ${q(m.name)},`);
     out.push(`    family: ${q(m.family)},`);
     out.push(`    returns: ${q(m.returns)},`);
+    if (m.payload !== undefined) out.push(`    payload: ${q(m.payload)},`);
     out.push(`    needs: Object.freeze(${q(m.needs)}),`);
     out.push(`    status: ${q(m.status)},`);
     if (m.note !== undefined) out.push(`    note: ${q(m.note)},`);
@@ -168,6 +188,7 @@ function renderTypes(contract) {
   out.push("  readonly name: MethodName;");
   out.push("  readonly family: MethodFamily;");
   out.push("  readonly returns: string;");
+  out.push("  readonly payload?: string;");
   out.push("  readonly needs: readonly MethodNeed[];");
   out.push("  readonly status: MethodStatus;");
   out.push("  readonly note?: string;");
@@ -281,11 +302,14 @@ function renderCapabilities(contract) {
   out.push("> `status` 含义见 `contract/methods.json` 的 `statusCatalog`;`needs` 里的 `confirm`/`secret`");
   out.push("> 就是钱包会向用户弹出的授权/确认面,`jdid-manifest.json` 必须如实声明。");
   out.push("");
-  out.push("| 方法 | 族 | 返回 | needs | status | 说明 |");
-  out.push("| --- | --- | --- | --- | --- | --- |");
+  out.push("| 方法 | 族 | 载荷 | 返回 | needs | status | 说明 |");
+  out.push("| --- | --- | --- | --- | --- | --- | --- |");
   for (const m of contract.methods) {
     const needs = m.needs.length ? m.needs.join(", ") : "—";
-    out.push(`| \`${m.name}\` | ${m.family} | \`${m.returns}\` | ${needs} | **${m.status}** | ${m.note ?? "—"} |`);
+    const payload = m.payload ? `\`${m.payload}\`` : "—";
+    out.push(
+      `| \`${m.name}\` | ${m.family} | ${payload} | \`${m.returns}\` | ${needs} | **${m.status}** | ${m.note ?? "—"} |`
+    );
   }
   out.push("");
   out.push("## 数据来源");
@@ -308,9 +332,9 @@ export function generate(contract) {
 function main() {
   const check = process.argv.includes("--check");
   const contract = loadContract();
-  const problems = validateContract(contract);
+  const problems = [...validateContract(contract), ...validatePackageVersion(contract, loadPackageVersion())];
   if (problems.length > 0) {
-    console.error("contract/methods.json 不合法:");
+    console.error("契约校验失败(contract/methods.json / package.json):");
     for (const p of problems) console.error(`  - ${p}`);
     process.exit(1);
   }

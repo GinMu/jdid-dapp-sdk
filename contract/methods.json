@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "contractVersion": "0.3.0",
-  "$comment": "JDID dApp RPC 契约 —— 单一来源。改本文件后执行 `npm run gen`;`npm run gen:check` 会守卫生成物漂移。方法名与宿主实现以 kotlin-toolkits/dapp-connect 的 DAppMethod.kt / WebAppInterface.kt 为准。 v0.2.0:方法面从 28 条收敛为 7 条作者可依赖的最小面,全部 verified;钱包运行时仍实现更多方法(如 eth_chainId/swtc_signMessage),但不在本契约内。",
+  "contractVersion": "0.0.1",
+  "$comment": "JDID dApp RPC 契约 —— 单一来源。改本文件后执行 `npm run gen`;`npm run gen:check` 会守卫生成物漂移。方法名与宿主实现以 kotlin-toolkits/dapp-connect 的 DAppMethod.kt / WebAppInterface.kt 为准。 方法面自 v0.2.0 起从 28 条收敛为 7 条作者可依赖的最小面,全部 verified;钱包运行时仍实现更多方法(如 eth_chainId/swtc_signMessage),但不在本契约内。 2026-11-12(emulator-5554 / Android 17):did_publish / did_stat / did_generateVC 由 partial 转 verified,实测要点留在这里 —— did_publish 载荷 {address,did,didDocument} → {code:\"0\",message:\"success\"}(约 17s,需密码+确认),之后 did_resolve/did_stat 可见;did_stat 载荷就是 DID 字符串 → {cid};did_generateVC 载荷 {address,id,types,subject} → 带 proof 的 VC;did_issueCredential 的 keyDoc 必须含 {address,did,id}(缺 did/id 报 keyDoc with did and id is required)。note 只保留一句职责说明。契约版本与 npm 包版本取同一数值(见 package.json),由 npm run gen:check 守住。",
   "wallet": {
     "name": "JDID",
     "nativeBridge": "_tw_",
@@ -59,8 +59,9 @@
         "account"
       ],
       "status": "verified",
-      "note": "取得 SWTC 账户(首次会触发 origin 授权,之后同一 origin 静默)。实测返回 SWTC 地址,如 [\"jwWmui…\"]。",
-      "source": "providers"
+      "note": "取得 SWTC 账户(首次会触发 origin 授权,之后同一 origin 静默)",
+      "source": "providers",
+      "payload": "[]"
     },
     {
       "name": "eth_requestAccounts",
@@ -70,8 +71,9 @@
         "account"
       ],
       "status": "verified",
-      "note": "取得 EVM 账户(会触发 origin 授权)。**C185 起只报 EVM 账户**:SWTC 身份下即使已授权也返回 [];SWTC 账户请用 swtc_requestAccounts。",
-      "source": "providers"
+      "note": "取得 EVM 账户(会触发 origin 授权)",
+      "source": "providers",
+      "payload": "[]"
     },
     {
       "name": "did_requestAccountName",
@@ -81,8 +83,9 @@
         "account"
       ],
       "status": "verified",
-      "note": "按地址取 DID 账户名。实测返回 \"Base1\"。",
-      "source": "dispatch"
+      "note": "按地址取 DID 账户名",
+      "source": "dispatch",
+      "payload": "[address]"
     },
     {
       "name": "did_getBase58PublicKey",
@@ -92,8 +95,9 @@
         "account"
       ],
       "status": "verified",
-      "note": "按地址取 Base58 公钥(会弹一次确认)。实测返回 {\"publicKeyBase58\":\"xDondUJ3…\",\"type\":\"EcdsaSecp256k1…\"}。",
-      "source": "dispatch"
+      "note": "按地址取 Base58 公钥(会弹一次确认)",
+      "source": "dispatch",
+      "payload": "[address]"
     },
     {
       "name": "did_issueCredential",
@@ -105,8 +109,9 @@
         "confirm"
       ],
       "status": "verified",
-      "note": "签发凭证(需 {credential:…} 载荷,会弹确认)。实测缺载荷时返回 `Missing credential in payload`;成功路径需按凭证格式调用。",
-      "source": "hostCapabilities"
+      "note": "签发凭证载荷,会弹确认",
+      "source": "hostCapabilities",
+      "payload": "[{keyDoc:{address,did,id}, credential:{…}}]"
     },
     {
       "name": "ipfs_personalSign",
@@ -117,8 +122,9 @@
         "secret"
       ],
       "status": "verified",
-      "note": "对载荷签名(需 account + secret)。实测返回 DER 签名 30440220…。",
-      "source": "hostCapabilities"
+      "note": "对载荷签名",
+      "source": "hostCapabilities",
+      "payload": "[[…bytes], address]"
     },
     {
       "name": "ipfs_getPublicKey",
@@ -128,8 +134,9 @@
         "account"
       ],
       "status": "verified",
-      "note": "按地址取公钥(会弹一次确认)。实测返回与 swtc_getPublicKey 相同的压缩公钥。",
-      "source": "dispatch"
+      "note": "按地址取公钥(会弹一次确认)",
+      "source": "dispatch",
+      "payload": "[address]"
     },
     {
       "name": "did_publish",
@@ -138,11 +145,13 @@
       "needs": [
         "account",
         "secret",
-        "confirm"
+        "confirm",
+        "chain"
       ],
-      "status": "partial",
-      "note": "发布 DID 文档。私钥由钱包按 address 取(页面**不能**传 privateKey);必须经宿主确认,无回调即拒。实测(2026-11-09)可调用(缺 address 时钱包报 `Missing address`),写链成功路径未验证。",
-      "source": "didBridge"
+      "status": "verified",
+      "note": "发布 DID 文档",
+      "source": "didBridge",
+      "payload": "[{address, did, didDocument}]"
     },
     {
       "name": "did_resolve",
@@ -150,17 +159,19 @@
       "returns": "object or null",
       "needs": [],
       "status": "verified",
-      "note": "解析 DID 文档;不存在时返回 null。不落库。实测(2026-11-09)对该 SWTC 地址返回 null(未上链),调用路径正常。",
-      "source": "didBridge"
+      "note": "解析 DID 文档",
+      "source": "didBridge",
+      "payload": "[did]"
     },
     {
       "name": "did_stat",
       "family": "did",
       "returns": "object",
       "needs": [],
-      "status": "partial",
-      "note": "读 DID 统计。实测(2026-11-09)已路由到钱包,但该 DID 的 stat 解析失败(`no link named \"b2\" under bafybei…`);需要有链上 stat 的 DID 再验。",
-      "source": "didBridge"
+      "status": "verified",
+      "note": "读 DID 统计",
+      "source": "didBridge",
+      "payload": "[did]"
     },
     {
       "name": "did_generateVC",
@@ -171,9 +182,10 @@
         "secret",
         "confirm"
       ],
-      "status": "partial",
-      "note": "生成 VC。私钥由钱包按 address 取;必须经宿主确认,无回调即拒。实测(2026-11-09)可调用(缺 address 时钱包报 `Missing address`),签发成功路径未验证。",
-      "source": "didBridge"
+      "status": "verified",
+      "note": "生成 VC",
+      "source": "didBridge",
+      "payload": "[{address, id, types, subject}]"
     },
     {
       "name": "did_verifyCredential",
@@ -181,8 +193,9 @@
       "returns": "object{verified,unknown,results?}",
       "needs": [],
       "status": "verified",
-      "note": "验证凭证(只读)。参数是凭证 JSON 字符串或对象。实测(2026-11-09)返回 {\"verified\":false,\"unknown\":false,\"results\":\"[]\"}。",
-      "source": "didBridge"
+      "note": "验证凭证(只读)",
+      "source": "didBridge",
+      "payload": "[credentialJsonOrObject]"
     },
     {
       "name": "did_generateDidDoc",
@@ -190,8 +203,9 @@
       "returns": "object",
       "needs": [],
       "status": "verified",
-      "note": "生成 DID 文档(纯拼装,不需要私钥)。实测(2026-11-09,emulator-5554,SWTC 身份)239ms 返回带 @context/id/created/updated 的文档对象。",
-      "source": "didBridge"
+      "note": "生成 DID 文档",
+      "source": "didBridge",
+      "payload": "[{did, version}]"
     }
   ]
 }

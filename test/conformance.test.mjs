@@ -18,6 +18,14 @@ test("示例 dApp 全过", () => {
   assert.match(result.stdout, /用户授权\/确认面:secret/);
 });
 
+test("所有示例目录都能通过自检(新增示例不能烂在仓库里)", () => {
+  for (const dapp of ["examples/minimal-dapp", "examples/did-lookup"]) {
+    const result = runCli(dapp);
+    assert.equal(result.status, 0, `${dapp} 应通过:\n${result.stdout}${result.stderr}`);
+    assert.match(result.stdout, /全部通过/, `${dapp} 应报告"全部通过"`);
+  }
+});
+
 test("反向证明:用了未声明的方法必须判红", () => {
   const result = runCli("test/fixtures/undeclared-method");
   assert.equal(result.status, 1, "fixture 必须失败");
@@ -31,7 +39,7 @@ test("--json 输出可被机器消费", () => {
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const report = JSON.parse(result.stdout);
   assert.equal(report.ok, true);
-  assert.equal(report.contractVersion, "0.3.0");
+  assert.equal(report.contractVersion, "0.0.1");
   assert.deepEqual(report.declaredMethods, [
     "swtc_requestAccounts",
     "did_requestAccountName",
