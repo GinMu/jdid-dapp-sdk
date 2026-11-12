@@ -1,191 +1,388 @@
-# `@jccdex/jdid-dapp-sdk` —— 最小骨架
+# `@jccdex/jdid-dapp-sdk`
 
-给 **dApp 作者**用的工具链骨架:**契约单一来源 → 类型/常量生成 → conformance 自检**。
-零依赖,只用 Node 内置模块。
+在 **JDID 钱包**里运行的 dApp,用这个包调用钱包能力:`window.ethereum` 的 typed 客户端、
+契约里的 13 个方法、以及一套能离线自检的工具链(conformance / Mock 钱包 / 真机 CDP)。
 
-> **它不是运行时。** dApp 的真实运行时仍是 JDID 钱包 WebView 里注入的
-> `window.ethereum` / `window.ccdao`(`kotlin-toolkits` 的 `ccdao-eip1193-provider.js`)。
-> 本包不改运行时、不签名、不持有私钥。
+> **它不是运行时。** dApp 的真实运行时是 JDID 钱包 WebView 注入的 `window.ethereum` / `window.ccdao`。
+> 本包不改运行时、不签名、不持有私钥;`secret` / `confirm` 类调用永远由钱包自己弹解锁与确认。
 
-## 目录
+- 零依赖,只用 Node 内置模块;Node **>= 22**(仅 CLI 与测试需要,浏览器侧无 Node 依赖)
+- 包版本与契约版本保持一致(当前均为 `0.0.1`),`npm run gen:check` 会守这一条
+
+---
+
+## 安装
+
+```sh
+npm i @jccdex/jdid-dapp-sdk
+# 或 pnpm add / yarn add
+```
+
+**前置条件**:页面必须从 **JDID App 的 Explore(DApp 页)** 打开 —— 只有那里才有钱包注入的
+`window.ethereum`。在普通浏览器里 `createClient()` 会明确抛 `wallet_missing`,而不是静默失败。
+
+```js
+import { createClient } from "@jccdex/jdid-dapp-sdk";
+
+const wallet = createClient(); // 自动发现 window.ethereum / window.ccdao
+```
+
+可选参数:`createClient({ wallet, timeoutMs })`(默认超时 20s,自带 `wallet` 便于注入 Mock)。
+
+### 在 DeepSeek Harness(DSH)里使用
+
+本包同时是一个 **DSH bundle**(`package.json` 的 `dsh.bundle.patch` → `dsh/cordis.patch.yml`):
+装进 DSH 后,agent 就有了"自己开 dApp、调 provider、看日志、截图"的能力,不用人手动点手机。
+
+#### 1. 安装
+
+```sh
+dsh plugin --profile web add @jccdex/jdid-dapp-sdk   # 等价于 Settings → Plugins 里安装
+```
+
+装完 **重启 `dsh web`**;新会话里会多出 12 个 `mcp__jdid-wallet__*` 工具。确认生效:
+
+- 会话里让 agent 调一次 `jdid_devices`,返回设备序列号(如 `emulator-5554`)即通;
+- 或脱离 DSH 直接自测 stdio(打印 `serverInfo` 后按 Ctrl-C):
+
+```sh
+npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp
+```
+
+#### 2. 在 Web 聊天里用文字使用
+
+打开 DSH Web(就是这个对话界面),**直接说你要什么**,不用记工具名:
+
+| 你说 | agent 会做 | 你会看到 |
+| --- | --- | --- |
+| 「看看现在连着几台设备」 | `jdid_devices` | `emulator-5554` |
+| 「在钱包里打开 <http://127.0.0.1:5173/>」 | 起静态服务器 + `adb reverse` + `jdid_open_dapp` | 页面被拉起 |
+| 「看看页面里钱包是什么状态」 | `jdid_probe` | `eth_accounts` / `chainId` / `selectedAddress` |
+| 「帮我调一下 did_stat,对象是 did:swtc:…」 | `jdid_eval` | `{ cid }` |
+| 「把这个 DID 的文档解析出来」 | `jdid_eval` 里调 `did_resolve` | 文档 JSON(没上链是 `null`) |
+| 「跑一下示例的自检」 | `npx jdid-dapp-conformance --dapp examples/did-lookup` | 五项全绿 |
+| 「截个图看看页面」 | `jdid_screenshot` | 图片路径 |
+| 「把刚才的报错捞出来」 | `jdid_logcat` + grep | `WebAppInterface` / `DidSdk` 日志 |
+| 「给这个 dApp 再加一个凭证验证页」 | 改文件 + 跑自检 | 新文件 + 自检结果 |
+
+几句提醒:
+
+- **说目标,别报工具名**:"帮我查一下这个 DID" 比 "调用 jdid_eval" 更好使,工具由 agent 选。
+- **写操作要说清后果**:说「发布 DID 文档(会写链)」,agent 才会带 `allowWrite: true`;钱包仍会再弹一次确认。
+- **卡住就贴现场**:把 `jdid_logcat` 的输出或截图发回聊天,比"不工作"有效得多。
+- Web 里可以用 `@` 引用文件或目录(如 `@examples/did-lookup`),agent 会直接读源码。
+
+#### 3. 让 agent 写一个 dApp
+
+给 agent 的一句话(它会自己读契约、生成工程、跑自检):
+
+> 在 JDID 里做一个查 DID 的 dApp:读 `node_modules/@jccdex/jdid-dapp-sdk/contract/methods.json`
+> 挑方法(只能用契约里的名字),生成 `jdid-manifest.json` + `index.html` + `main.js`
+> (导出 `run(wallet)`),最后用 `npx jdid-dapp-conformance --dapp .` 自检到全绿。
+
+仓库自带一个 skill(`jdid-dapp`,见 [`.dsh/skills/jdid-dapp/SKILL.md`](.dsh/skills/jdid-dapp/SKILL.md)),
+把"读契约 → 建 manifest → 写 run(wallet) → conformance"固化成了五步;想复用它,把该目录拷到
+项目的 `.dsh/skills/`(或 `~/.dsh/skills/`)下即可。
+
+#### 4. 让 agent 真机联调
+
+典型闭环(全部通过 MCP 工具完成):
 
 ```text
-contract/methods.json      契约单一来源(13 个可依赖方法:10 verified + 3 partial,含 needs/status + 线格式)
-schema/manifest.schema.json jdid-manifest.json 的 JSON Schema
-scripts/gen.mjs            生成器:methods.json → src/methods.js / src/index.d.ts / docs/capabilities.md
-src/index.js               createClient() typed 客户端 + createNativeTransport()(_tw_ 线格式)
-src/mock.js                createMockWallet():测试/示例用的假钱包(桩值)
-cli/conformance.mjs        conformance CLI:契约/生成物/manifest/调用声明/Mock 冒烟
-examples/minimal-dapp/     最小示例 dApp(SWTC 账户 + DID 名字 + Base58 公钥 + 签名)
-test/                      node --test 用例(含两条反向证明)
-docs/capabilities.md       生成的能力矩阵:哪些方法可用、要不要用户确认
-docs/architecture.md       目录/分层职责:契约 → 生成 → 消费,以及"想改 X 该动哪个目录"
-mcp/server.mjs             jdid-wallet-mcp:agent 驱动真机钱包的 9 个工具
+jdid_devices                     # 1) 确认设备
+jdid_open_dapp { url }           # 2) 在 Explore 里打开(先 adb reverse 起静态服务器)
+jdid_probe                       # 3) 看注入状态:eth_accounts / chainId / selectedAddress
+jdid_eval { expression }         # 4) 在页面里跑 JS:调 window.ethereum.request(...)
+jdid_logcat { grep }             # 5) 看 WebAppInterface / DidSdk 的报错
+jdid_screenshot { path }         # 6) 留证
 ```
 
-## 在 DeepSeek Harness 里安装(插件页,无需手写配置)
+前置条件:`adb devices` 有设备、装的是 **debug** 包(WebView 调试只对 debuggable 应用开启)、
+钱包已解锁并进过 Explore。
 
-本包同时是一个 **DSH bundle**:`package.json` 的 `dsh.bundle.patch` 指向
-[`dsh/cordis.patch.yml`](dsh/cordis.patch.yml),里面用 `insert` 注册 `mcp-jdid-wallet`
-(`npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp`)。所以发布后:
+写操作有闸门:`jdid_did_publish` 不传 `allowWrite: true` 时**完全不碰设备**,直接返回
+`{ ok: false, state: "blocked" }`;即便传了,钱包仍会按 origin 弹一次确认。
 
-1. 打开 DSH 的 **Settings → Plugins**,安装 `@jccdex/jdid-dapp-sdk`;
-2. 重启 `dsh web`;
-3. 新会话里就多了 12 个 `mcp__jdid-wallet__*` 工具(设备/开页/探针/DID/自检)。
+#### 5. 在 DSH 的 shell 里直接用 SDK
 
-等价 CLI:
+DSH 的 bash 工具可以直接跑 Node 片段(前提是工程里装了本包):
 
 ```sh
-dsh plugin --profile web add @jccdex/jdid-dapp-sdk
+# 列当前契约的方法面
+node --input-type=module -e '
+import { CONTRACT_VERSION, METHOD_NAMES } from "@jccdex/jdid-dapp-sdk";
+console.log(CONTRACT_VERSION, METHOD_NAMES);
+'
+
+# 用 Mock 钱包跑一遍 dApp 的 run(wallet),看它到底发了哪些调用
+node --input-type=module -e '
+import { createMockWallet } from "@jccdex/jdid-dapp-sdk/mock";
+const w = createMockWallet();
+await w.request("did_stat", ["did:swtc:MOCK"]);
+console.log(w.methodsCalled(), w.calls);
+'
+
+# 五项静态自检(不需要设备)
+npx jdid-dapp-conformance --dapp . --json
 ```
 
-发布前想本地试:同一份补丁把 `command/args` 换成 `node /abs/path/mcp/server.mjs` 即可
-(见 README 上面的注册示例)——`npx` 那一行依赖 registry 上的包。
+#### 6. 给 agent 的硬约束(写进 prompt 更保险)
 
-## 发布与起步
+- 只调用 `contract/methods.json` 里的方法;不在里面的名字会被客户端在**发出前**拒绝。
+- SWTC 身份的账户走 `swtc_requestAccounts`;SWTC 钱包上 `eth_requestAccounts` 返回 `[]`。
+- `eth_chainId` 恒为 `0x1`,不能用来判断链。
+- 动钱方法(`swtc_sendTransaction` / `eth_sendTransaction` / `swtc_multiSign` /
+  `swtc_batchTransactions`)**不要**在自检或 agent 流程里调用。
+- 私钥/助记词永远不进 dApp:签名只在钱包里做。
 
-本包已可发布(`private` 已去掉,`files` 含 `src/contract/schema/cli/docs/mcp/examples`,版本跟契约版本对齐)。
+---
+
+## 查看这个插件里有什么
+
+**① 运行时直接打印**(推荐,永远和当前版本一致)
+
+```js
+import { CONTRACT_VERSION, METHODS } from "@jccdex/jdid-dapp-sdk";
+
+console.log(`契约 ${CONTRACT_VERSION},共 ${METHODS.length} 个方法`);
+console.table(
+  METHODS.map(({ name, payload, needs, status, note }) => ({
+    方法: name,
+    载荷: payload,
+    需要: needs.join(",") || "-",
+    状态: status,
+    说明: note,
+  })),
+);
+```
+
+`METHODS` / `METHOD_INDEX` 带 `name / family / payload / returns / needs / status / note / source`;
+`METHOD_NAMES` 只有名字;`CONTRACT_VERSION` 是契约版本。
+
+**② 能力矩阵文档**:[`docs/capabilities.md`](docs/capabilities.md) —— 自动生成的表,列有
+`方法 | 族 | 载荷 | 返回 | needs | status | 说明`,适合直接贴给协作方或 agent 读。
+
+**③ 命令行自检**(不需要设备):
 
 ```sh
-# 1) 从模板起步(拷 examples/minimal-dapp 并改写 import 为包名)
-npx @jccdex/jdid-dapp-sdk my-first-dapp
-cd my-first-dapp && npm i
-node node_modules/@jccdex/jdid-dapp-sdk/cli/conformance.mjs --dapp .   # 静态自检,不需要设备
-
-# 2) 在 JDID App 里真机联调
-npx @jccdex/jdid-dapp-sdk jdid-wallet-mcp    # 以 stdio 起 MCP server,交给 agent 驱动
+npx jdid-dapp-conformance --dapp .          # 五项静态自检
+npx jdid-dapp-conformance --dapp . --json   # 机器可读
 ```
 
-三个 bin:
+报告里会带上 `contractVersion`、dApp 声明的方法、实际调用的方法、以及会弹给用户的授权面。
 
-| bin | 作用 |
+**④ 插件(DSH / MCP)里有什么**:安装后是 12 个 `jdid-wallet` 工具,分三组 ——
+
+| 组 | 工具 |
 | --- | --- |
-| `create-jdid-dapp` | 生成 dApp 骨架(manifest 的 `name` 与目录名一致) |
-| `jdid-dapp-conformance` | 五项静态自检 + 可选 `--cdp` 真机 |
-| `jdid-wallet-mcp` | MCP server:让 agent 自己开 dApp/调 provider/截图 |
+| 设备与页面 | `jdid_devices`、`jdid_open_dapp`、`jdid_probe`、`jdid_eval`、`jdid_tap`、`jdid_type`、`jdid_logcat`、`jdid_screenshot` |
+| DID 能力 | `jdid_did_inspect`(只读)、`jdid_did_verify`(只读)、`jdid_did_publish`(写,默认拦下) |
+| 契约自检 | `jdid_conformance` |
 
-CI(`.github/workflows/ci.yml`)在 Node 22 上跑 `npm run check`,并用 `npm pack --dry-run` 兜住 `files` 白名单。
+`jdid_did_publish` 必须显式传 `allowWrite: true` 才会碰设备,否则直接返回
+`{ ok: false, state: "blocked" }`。真机工具的**前置条件**:`adb devices` 有设备、装的是 **debug** 包
+(WebView 调试只对 debuggable 应用开启)、钱包已解锁并进过 Explore。
 
-## 快速开始
+不装插件也能直接起这个 MCP server(stdio):
 
 ```sh
-npm run gen          # 改完 contract/methods.json 后重新生成
-npm run gen:check    # 只校验生成物是否漂移(CI 用)
-npm test             # 22 个用例
-npm run conformance  # 对 examples/minimal-dapp 跑一遍
+npx -y @jccdex/jdid-dapp-sdk jdid-wallet-mcp
+```
+
+---
+
+## 开放 API 怎么用
+
+客户端把 13 个契约方法都包成了具名 helper,底层统一走 `wallet.request({ method, params })`:
+
+| helper | RPC 方法 | 载荷 | 会弹确认 |
+| --- | --- | --- | --- |
+| `connect()` | `eth_requestAccounts` | `[]` | 首次授权 |
+| `connectSwtc()` | `swtc_requestAccounts` | `[]` | 首次授权 |
+| `requestAccountName(address)` | `did_requestAccountName` | `[address]` | 否 |
+| `base58PublicKey(address)` | `did_getBase58PublicKey` | `[address]` | 是 |
+| `issueCredential(payload)` | `did_issueCredential` | `[{keyDoc:{address,did,id}, credential:{…}}]` | 密码 + 确认 |
+| `ipfsSign({data, address})` | `ipfs_personalSign` | `[[…bytes], address]` | 签名 |
+| `ipfsPublicKey(address)` | `ipfs_getPublicKey` | `[address]` | 是 |
+| `publishDid({did, didDocument, address})` | `did_publish` | `[{address, did, didDocument}]` | 密码 + 确认,写链 |
+| `resolveDid(did)` | `did_resolve` | `[did]` | 否 |
+| `didStat(did)` | `did_stat` | `[did]` | 否 |
+| `generateVC(payload)` | `did_generateVC` | `[{address, id, types, subject}]` | 密码 + 确认 |
+| `verifyCredential(credential)` | `did_verifyCredential` | `[credentialJsonOrObject]` | 否 |
+| `generateDidDoc(payload)` | `did_generateDidDoc` | `[{did, version}]` | 否 |
+
+也可以不用 helper,直接调契约里的名字(SDK 会在**发出之前**拒绝未知方法):
+
+```js
+await wallet.request("did_stat", ["did:swtc:jsk26..."]);
+```
+
+### 典型流程
+
+```js
+// 1) 拿账户(SWTC 身份;EVM 身份用 connect())
+const [address] = await wallet.connectSwtc();
+const did = `did:swtc:${address}`;
+
+// 2) 拼装 / 解析文档(都只读)
+const doc = await wallet.generateDidDoc({ did, version: "1.0" });
+const onChain = await wallet.resolveDid(did); // 没上链时是 null
+const stat = await wallet.didStat(did);       // { cid }
+
+// 3) 发布文档(写链:钱包弹密码 + 确认;私钥由钱包按 address 取,页面不传)
+await wallet.publishDid({ address, did, didDocument: doc });
+
+// 4) 生成 / 签发 / 验证凭证
+const vc = await wallet.generateVC({
+  address,
+  id: "urn:uuid:demo-1",
+  types: ["VerifiableCredential"],
+  subject: { id: did },
+});
+const signed = await wallet.issueCredential({
+  keyDoc: { address, did, id: `${did}#key-1` }, // did + id 必填
+  credential: {
+    "@context": ["https://www.w3.org/2018/credentials/v1"],
+    id: "urn:uuid:demo-2",
+    type: ["VerifiableCredential"],
+    issuer: did,
+    issuanceDate: new Date().toISOString(),
+    credentialSubject: { id: did },
+  },
+});
+const { verified } = await wallet.verifyCredential(signed);
+```
+
+`eth_*` 只报 **EVM** 账户(SWTC 身份下返回 `[]`),`eth_chainId` 是 provider 默认值,**不能用来判断链**。
+
+### 错误处理
+
+所有失败都归一化成 `JdidDappError`,带稳定的 `code`:
+
+| `code` | 含义 |
+| --- | --- |
+| `wallet_missing` | 没找到 provider(不在 JDID App 里打开) |
+| `unknown_method` | 方法名不在契约里 |
+| `timeout` | 钱包没在超时内响应(未解锁 / 确认弹窗超时) |
+| `wallet_rejected` | 钱包拒绝(用户点取消、密码错、参数不合法等,原文在 message 里) |
+
+```js
+try {
+  await wallet.publishDid({ address, did, didDocument: doc });
+} catch (e) {
+  if (e.code === "timeout") {
+    /* 确认弹窗 15s 超时,等价于用户拒绝 */
+  }
+}
+```
+
+### 没有 EIP-1193 provider 的宿主
+
+某些宿主只提供原生桥 `_tw_`,这时用 `createNativeTransport`:
+
+```js
+import { createNativeTransport } from "@jccdex/jdid-dapp-sdk";
+
+const t = createNativeTransport({
+  postMessage: (json) => window._tw_.postMessage(json), // { name, network, id, params }
+});
+// 原生侧回调:
+t.handleResponse(id, result);
+t.handleError(id, error);
+```
+
+---
+
+## 自测:dApp 里怎么写才能在 Node 里跑
+
+本包约定 dApp 导出一个 `run(wallet)`;`createMockWallet()` 给桩值,conformance 的冒烟检查就靠它:
+
+```js
+import { createMockWallet } from "@jccdex/jdid-dapp-sdk/mock";
+
+export async function run(wallet) {
+  const [addr] = await wallet.request("swtc_requestAccounts", []);
+  return { addr };
+}
+
+// 测试里
+const mock = createMockWallet();
+await run(mock);
+console.log(mock.calls); // [{ method, params }] —— conformance 用它校验"声明覆盖"
+```
+
+---
+
+## 最小 dApp 与自检
+
+一个 dApp 目录需要 `jdid-manifest.json`(必填 `name` / `version` / `entry` / `methods`,
+schema 见 [`schema/manifest.schema.json`](schema/manifest.schema.json)),`methods` 必须是契约的子集。
+
+```sh
+npx create-jdid-dapp my-dapp      # 从 examples/minimal-dapp 拷贝骨架
+cd my-dapp
+npx jdid-dapp-conformance --dapp . # contract / codegen / manifest / dapp-source / smoke 五项
+```
+
+真机联调(需要 adb + debug 包 + 已解锁):
+
+```sh
+node node_modules/@jccdex/jdid-dapp-sdk/cli/conformance.mjs --cdp --wait 180
+# 终端给出 http://127.0.0.1:<port>/ ,粘到 Explore 打开;--auto-open 可自动拉起
+```
+
+`--cdp` 只跑只读探针;加 `--run-dapp` 才会跑 dApp 自己的 `run(wallet)`(可能触发授权/确认)。
+
+---
+
+## 示例
+
+| 目录 | 做什么 | 会弹的授权面 |
+| --- | --- | --- |
+| [`examples/minimal-dapp`](examples/minimal-dapp) | 取账户、读 DID 名字与 Base58 公钥、签一条载荷、拼装 + 解析文档 | `secret`(签名) |
+| [`examples/did-lookup`](examples/did-lookup) | 只读查 DID:拼装文档、解析链上文档、读 `cid` | 无(不碰签名与确认) |
+
+两个都导出 `run(wallet)`,因此既能离线自检,也能直接在 Explore 里打开:
+
+```sh
+npx jdid-dapp-conformance --dapp examples/minimal-dapp
+npx jdid-dapp-conformance --dapp examples/did-lookup
+```
+
+真机看效果(静态服务器跑在宿主,再用 `adb reverse` 打通):
+
+```sh
+python3 -m http.server 5173 --directory examples/did-lookup
+adb reverse tcp:5173 tcp:5173
+# 然后在 JDID 的 Explore 里打开 http://127.0.0.1:5173/
+```
+
+## 本仓开发
+
+```sh
+npm run gen          # 改完 contract/methods.json 重新生成三份产物
+npm run gen:check    # 只校验漂移(CI)
+npm test             # node --test
 npm run check        # 以上三件套
 ```
 
-`npm run conformance -- --dapp <dir>` 可对任意 dApp 目录自检;`--json` 给机器读。
+`contract/methods.json` 是**唯一来源**,方法名与宿主实现以 `kotlin-toolkits/dapp-connect` 的
+`DAppMethod.kt` / `WebAppInterface.kt` 为准。生成物(`src/methods.js`、`src/index.d.ts`、
+`docs/capabilities.md`)不要手改;`payload` 列只描述 `params` 的形状,不参与管线判定。
 
-## 写一个 dApp 的最小流程
-
-1. 建目录,放 `jdid-manifest.json`(必填 `name`/`version`/`entry`/`methods`,见 `schema/manifest.schema.json`);
-2. 页面里 `import { createClient } from "@jccdex/jdid-dapp-sdk"`,用 `createClient(window.ethereum)`;
-3. 只调用契约里的方法(SDK 会在**发出之前**拒绝未知方法名);
-4. `run(wallet)` 这个约定让你能用 `createMockWallet()` 在 Node 里跑同一份逻辑 —— conformance 靠它做冒烟;
-5. `npx jdid-dapp-conformance --dapp .` 自检,再拿到 JDID App 的 Explore 页里打开。
-
-`examples/minimal-dapp/` 是照着上面五步写的完整例子。
-
-## 契约怎么改(重要)
-
-`contract/methods.json` 是**唯一来源**,方法名与宿主实现以
-`kotlin-toolkits/dapp-connect` 的 `DAppMethod.kt` / `WebAppInterface.kt` 为准
-(见 JSON 里的 `sources` 字段)。改契约的流程:
+目录:
 
 ```text
-改 contract/methods.json → npm run gen → 三份生成物一起提交
+contract/methods.json   契约单一来源(13 个方法、needs/status/payload、线格式)
+src/index.js            createClient() / createNativeTransport() / 错误归一化
+src/mock.js             createMockWallet():测试与 conformance 用的假钱包
+cli/conformance.mjs     五项自检 + 可选 --cdp 真机
+cli/create-dapp.mjs     脚手架
+mcp/server.mjs          jdid-wallet-mcp:让 agent 驱动真机钱包
+dsh/cordis.patch.yml    DSH 插件层:把上面这个 MCP server 注册成 mcp-jdid-wallet
+docs/capabilities.md    生成的能力矩阵
 ```
 
-- `gen --check` 会在 CI 里拦住"改了契约忘了重新生成";
-- `test/contract.test.mjs` 里有一份与 `DAppMethod.kt` 对齐的方法名清单,**加/删方法必须显式改它**;
-- 契约里的两条硬规则:方法名唯一;`needs` 含 `confirm` 的方法必须同时含 `secret`(要确认的调用必然也要签名材料)。
+## 许可
 
-## `status` 与 `needs` 的含义
-
-| 字段 | 含义 |
-| --- | --- |
-| `status: verified` | 有源码守卫/测试证据,可直接依赖 |
-| `status: partial` | 可用但有已知限制(看 `note`),生产 dApp 要容错 |
-| `status: stub` | 宿主返回桩值/恒空(如 `eth_blockNumber`、`eth_requestNfts`),**不要依赖** |
-| `status: unknown` | 本仓 conformance 未覆盖,接入前先实测 |
-| `needs: account/secret/confirm/chain` | 该调用会碰到的授权面;`secret`/`confirm` 就是钱包会弹给用户的解锁/确认 |
-
-`docs/capabilities.md` 是这张表的自动生成版,给 dApp 作者和 agent 读。
-
-## 真机跑法(`--cdp`)
-
-前面 5 项检查都在 Node 里跑;要打**真钱包**,加 `--cdp`:
-
-```sh
-# 1) 宿主机有 adb,设备已连上(debug 包:WebView 调试对 debuggable 应用默认开启)
-# 2) 在设备上解锁 JDID 并进入 Explore(先别输地址)
-node cli/conformance.mjs --cdp --wait 180
-
-# 3) 终端会打印形如 http://127.0.0.1:56803/ 的地址(已用 adb reverse 打通),
-#    粘到 Explore 输入框里打开;页面出现后工具自动 attach
-```
-
-它做的事:起静态服务器 → `adb reverse` → 等 App 进程 → `adb forward` 到
-`webview_devtools_remote_<pid>` → 在页面里 `Runtime.evaluate` 跑只读探针
-(`eth_accounts` / `eth_chainId` / `web3_clientVersion`),**不触碰** `secret` / `confirm`。
-
-- 默认只跑探针;要连 dApp 的 `run(wallet)` 一起跑就加 `--run-dapp`(示例 dApp 会先
-  `eth_requestAccounts` 授权、再 `personal_sign`,需要已解锁,会弹确认);
-- 没有设备 / App 没开:默认**降级为跳过**(报告里 `~ cdp`),加 `--require-cdp` 才判失败;
-- **`eth_accounts` 为空不算失败**(M-R7:未授权 origin 不注入地址),报告里是一条 `~` 警告
-  (注意:探针用的是**钱包诊断方法**,不受 13 条契约限制 —— 契约是"作者可依赖的面",不是"钱包只实现这些");
-  想让它变失败加 `--require-accounts`(那就要先在钱包里授权);
-- 其它开关:`--device <serial>`、`--package <id>`(默认 `com.android.jdid`)、`--wait <秒>`、`--port <端口>`、`--auto-open`。
-- **`--port` 固定端口有实际意义**:origin(`http://127.0.0.1:<port>`)是授权台账的键,端口随机就意味着
-  **每次都要重新授权**;固定成比如 `--port 5173` 后,一次授权后续几次都静默。
-- **`--auto-open`** 会 `monkey` 拉起 App、点 Explore,并**优先点 App 的「最近访问」**里的同一个地址;
-  找不到时才退化为 `input text` 打字。⚠️ 实测中文输入法会把 `http://` 改写成全角 `HTTP：／／`、
-  吞掉点号(`127.0.0.1:59721` → `12700.：／159721`),所以**第一次请用固定 `--port` 手动打开一次**,
-  之后 `--auto-open` 就能靠最近访问稳定复跑。解锁页/改版后找不到控件时只打印提示,不会瞎点。
-
-> release / 上架包没有这个能力(WebView 调试只在 debuggable 构建里),这是刻意的。
-
-## 已经实现 vs 还没做
-
-已实现(本骨架):
-
-- 契约校验 + 生成物漂移守卫(含**反向证明**用例:手改生成物必红);
-- manifest 校验:`entry` 存在、`methods ⊆ 契约`;
-- **调用声明覆盖**:静态字面量 ∪ Mock 跑出来的真实调用,未声明即红(反向证明 fixture 已覆盖);
-- `_tw_` 线格式实现与断言:`{ name, network, id, params }`,响应按 id 只结算一次;
-- 超时/未知方法/钱包拒绝的错误归一化(`timeout` / `unknown_method` / `wallet_rejected`);
-- **`--cdp` 真机通道**:静态服务器 + `adb reverse`/`forward` + 页面内 `Runtime.evaluate`
-  跑只读探针;缺设备时降级跳过,`--require-cdp` 才判失败。
-
-**历史真机校准(2026-11-04,28 条时代的记录,保留作证据)**:当时逐条实测后写回契约——
-
-- **授权前** `eth_accounts` → `[]`、`swtc_requestAccounts` → `User rejected`(M-R7 设计);
-  设备上确认一次后 `swtc_requestAccounts` 返回地址;**C185 起 `eth_accounts` / `eth_requestAccounts`
-  在已授权状态下仍为 `[]`**(EVM-only,2026-11-05 复验),SWTC 账户只能走 `swtc_requestAccounts`。
-- **确认是桩的**:`eth_blockNumber` → `"0x0"`、`eth_requestNfts` → `{address:"",total:0,nfts:[]}`
-  (是**对象**不是数组,`returns` 已更正)。
-- **真能签的**:`swtc_signMessage`(23s,含确认,DER 签名)、`ipfs_personalSign`(13ms,DER 签名)。
-- **会弹确认的门**(2026-11-05 补测,确认后均成功):`swtc_getPublicKey` → 压缩公钥 `03347aa7…`;
-  `did_getBase58PublicKey` → `{publicKeyBase58:"xDondUJ3…",type:"EcdsaSecp256k1…"}`;
-  `ipfs_getPublicKey` → 与 `swtc_getPublicKey` 相同;`swtc_signMessage` → DER 签名。**不点确认则超时**。
-- **EVM 方法在 SWTC 地址上直接拒**:`personal_sign` / `eth_decrypt` / `eth_getEncryptionPublicKey`
-  都报 `Address is not an EVM address` → SWTC 场景请用 `swtc_*`。
-- `eth_chainId` → `0x1`(provider JS 默认,原生从不推 `_updateChainId`)——**不能**用来判断真实链;
-- `did_requestAccountName` → `"Base1"`;`web3_clientVersion` → `CCDAO/v1.0.0`。
-
-`node cli/calibrate.mjs --address <地址>` 可复跑这套逐条校准(默认只跑只读/无资金风险的方法)。
-
-还没做(下一步):
-
-- **用真机结果继续校准契约**:v0.3.0 起方法面 13 条(10 `verified` + 3 `partial`);新增方法时用 `--cdp` / `calibrate` 的实测输出把 `partial` 逐条变成证据
-  (需要解锁后跑一轮);
-- 按 origin 的授权台账与 dApp catalog(钱包侧要做运行时,本包只管声明与校验);
-- `create-jdid-dapp` 脚手架已就绪;正式发版只需 `npm publish --access public`。
-
-## 与 harness 的关系
-
-本包是**给 agent 用的底座**:项目里的 `AGENTS.md` 与 `.dsh/skills/jdid-dapp/SKILL.md`
-只需要引用本包的 `contract/methods.json` + `npm run conformance`,就能让 agent
-"按用户想法生成 dApp → 自检 → 交回可运行工程"。MCP(驱动模拟器)是再下一层,不在本骨架内。
+MIT
